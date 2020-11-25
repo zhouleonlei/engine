@@ -5,18 +5,24 @@
 assert(is_linux)
 
 import("//flutter/shell/platform/glfw/config.gni")
+import("//flutter/shell/platform/tizen/config.gni")
 import("//flutter/testing/testing.gni")
 
 group("linux") {
-  deps = [
-    ":flutter_linux_gtk",
-    ":publish_headers_linux",
-  ]
+  deps = []
+
   if (build_glfw_shell) {
     deps += [
       ":flutter_linux_glfw",
       "//flutter/shell/platform/glfw:publish_headers_glfw",
       "//flutter/shell/platform/glfw/client_wrapper:publish_wrapper_glfw",
+    ]
+  }
+
+  if (build_tizen_shell) {
+    deps += [
+      ":flutter_linux_tizen",
+      "//flutter/shell/platform/tizen:publish_headers_tizen",
     ]
   }
 }
@@ -34,6 +40,16 @@ config("disable_fatal_link_warnings") {
 if (build_glfw_shell) {
   shared_library("flutter_linux_glfw") {
     deps = [ "//flutter/shell/platform/glfw:flutter_glfw" ]
+
+    configs += [ ":disable_fatal_link_warnings" ]
+
+    public_configs = [ "//flutter:config" ]
+  }
+}
+
+if (build_tizen_shell) {
+  shared_library("flutter_linux_tizen") {
+    deps = [ "//flutter/shell/platform/tizen:flutter_tizen" ]
 
     configs += [ ":disable_fatal_link_warnings" ]
 
@@ -71,7 +87,7 @@ config("relative_flutter_linux_headers") {
 source_set("flutter_linux_sources") {
   public = _public_headers
 
-  configs += [ "//flutter/shell/platform/linux/config:gtk" ]
+  # configs += [ "//flutter/shell/platform/linux/config:gtk" ]
 
   sources = [
     "egl_utils.cc",
@@ -115,8 +131,8 @@ source_set("flutter_linux_sources") {
 
 source_set("flutter_linux") {
   configs += [
-    "//flutter/shell/platform/linux/config:gtk",
-    "//flutter/shell/platform/linux/config:egl",
+    # "//flutter/shell/platform/linux/config:gtk",
+    # "//flutter/shell/platform/linux/config:egl",
     "//third_party/khronos:khronos_headers",
   ]
 
@@ -156,7 +172,7 @@ executable("flutter_linux_unittests") {
 
   public_configs = [ "//flutter:config" ]
 
-  configs += [ "//flutter/shell/platform/linux/config:gtk" ]
+  # configs += [ "//flutter/shell/platform/linux/config:gtk" ]
 
   # Set flag to allow public headers to be directly included (library users should not do this)
   defines = [ "FLUTTER_LINUX_COMPILATION" ]

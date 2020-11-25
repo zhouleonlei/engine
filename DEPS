@@ -107,6 +107,8 @@ allowed_hosts = [
 deps = {
   'src': 'https://github.com/flutter/buildroot.git' + '@' + 'a6c0959d1ac8cdfe6f9ff87892bc4905a73699fe',
 
+  'src/third_party/tizen_tools': 'git@github.com:flutter-tizen/tizen_tools.git',
+
    # Fuchsia compatibility
    #
    # The dependencies in this section should match the layout in the Fuchsia gn

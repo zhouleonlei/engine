@@ -63,6 +63,7 @@ source_set("flutter_tizen") {
 
   include_dirs = [
     "//third_party/tizen_tools/sysroot/$target_cpu/usr/include",
+    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/appfw",
     "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/base",
     "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/dlog",
     "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/ecore-1",
@@ -89,6 +90,7 @@ source_set("flutter_tizen") {
 
   libs = [
     "base-utils-i18n",
+    "capi-appfw-application",
     "capi-system-info",
     "capi-system-system-settings",
     "dlog",

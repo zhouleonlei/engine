@@ -4,6 +4,8 @@
 
 #include "platform_channel.h"
 
+#include <app.h>
+
 #include "flutter/shell/platform/common/cpp/json_method_codec.h"
 #include "flutter/shell/platform/tizen/logger.h"
 
@@ -28,7 +30,7 @@ void PlatformChannel::HandleMethodCall(
   const auto method = call.method_name();
 
   if (method == "SystemNavigator.pop") {
-    exit(EXIT_SUCCESS);
+    ui_app_exit();
     result->Success();
   } else if (method == "SystemSound.play") {
     result->NotImplemented();

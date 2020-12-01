@@ -85,6 +85,7 @@ bool TizenVsyncWaiter::CreateTDMVblank() {
     return false;
   }
 
+  tdm_client_vblank_set_enable_fake(vblank_, 1);
   return true;
 }
 

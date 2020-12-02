@@ -28,6 +28,7 @@ class TouchEventHandler {
   bool pointer_state_ = false;
 
   void SendFlutterPointerEvent(FlutterPointerPhase phase, double x, double y,
+                               double scroll_delta_x, double scroll_delta_y,
                                size_t timestamp);
 
   static Eina_Bool OnTouch(void* data, int type, void* event);

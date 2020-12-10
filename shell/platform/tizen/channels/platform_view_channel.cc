@@ -4,8 +4,8 @@
 #include "platform_view_channel.h"
 
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/plugin_registrar.h"
-#include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/standard_method_codec.h"
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/standard_message_codec.h"
+#include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/standard_method_codec.h"
 #include "flutter/shell/platform/common/cpp/json_method_codec.h"
 #include "flutter/shell/platform/tizen/logger.h"
 #include "flutter/shell/platform/tizen/public/flutter_platform_view.h"
@@ -50,6 +50,17 @@ flutter::EncodableMap extractMapFromMap(
       return std::get<flutter::EncodableMap>(value);
   }
   return flutter::EncodableMap();
+}
+
+flutter::EncodableList extractListFromMap(
+    const flutter::EncodableValue& arguments, const char* key) {
+  if (std::holds_alternative<flutter::EncodableMap>(arguments)) {
+    flutter::EncodableMap values = std::get<flutter::EncodableMap>(arguments);
+    flutter::EncodableValue value = values[flutter::EncodableValue(key)];
+    if (std::holds_alternative<flutter::EncodableList>(value))
+      return std::get<flutter::EncodableList>(value);
+  }
+  return flutter::EncodableList();
 }
 
 PlatformViewChannel::PlatformViewChannel(flutter::BinaryMessenger* messenger)
@@ -126,8 +137,23 @@ void PlatformViewChannel::HandleMethodCall(
         it->second->resize(width, height);
         result->NotImplemented();
       } else if (method == "touch") {
-        LoggerD("PlatformViewChannel touch");
-        result->NotImplemented();
+        int type, button;
+        double x, y, dx, dy;
+
+        flutter::EncodableList event = extractListFromMap(arguments, "event");
+        if (event.size() != 6) {
+          result->Error("Invalid Arguments");
+          return;
+        }
+        type = std::get<int>(event[0]);
+        button = std::get<int>(event[1]);
+        x = std::get<double>(event[2]);
+        y = std::get<double>(event[3]);
+        dx = std::get<double>(event[4]);
+        dy = std::get<double>(event[5]);
+
+        it->second->touch(type, button, x, y, dx, dy);
+        result->Success();
       } else if (method == "setDirection") {
         LoggerD("PlatformViewChannel setDirection");
         result->NotImplemented();

@@ -23,7 +23,8 @@ class PlatformView {
   flutter::PluginRegistrar* getPluginRegistrar() { return registrar_; }
   virtual void dispose() = 0;
   virtual void resize(double width, double height) = 0;
-  virtual void touch() = 0;
+  virtual void touch(int type, int button, double x, double y, double dx,
+                     double dy) = 0;
   virtual void setDirection(int direction) = 0;
   virtual void clearFocus() = 0;
 

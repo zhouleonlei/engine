@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include "tizen_surface_gl.h"
+
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+
 #include "flutter/shell/platform/tizen/logger.h"
 
 TizenSurfaceGL::TizenSurfaceGL(int32_t x, int32_t y, int32_t width,
@@ -78,7 +80,7 @@ uint32_t TizenSurfaceGL::OnGetFBO() {
   return 0;  // FBO0
 }
 
-#define GL_FUNC(FunctionName)              \
+#define GL_FUNC(FunctionName)                     \
   else if (strcmp(name, #FunctionName) == 0) {    \
     return reinterpret_cast<void*>(FunctionName); \
   }
@@ -241,6 +243,8 @@ bool TizenSurfaceGL::InitalizeDisplay() {
   // ecore_wl2 SHOW
   ecore_wl2_window_show(wl2_window_);
 
+  ecore_wl2_window_aux_hint_add(wl2_window_, 0, "wm.policy.win.user.geometry",
+                                "1");
   ecore_wl2_window_position_set(wl2_window_, x_, y_);
   ecore_wl2_window_geometry_set(wl2_window_, x_, y_, window_width_,
                                 window_height_);
@@ -365,4 +369,10 @@ void TizenSurfaceGL::Destroy() {
     wl2_display_ = nullptr;
   }
   ecore_wl2_shutdown();
+}
+
+void TizenSurfaceGL::SetSize(int32_t width, int32_t height) {
+  LoggerD("Resize egl window %d %d", width, height);
+  ecore_wl2_egl_window_resize_with_rotation(egl_window_, 0, 0, width, height,
+                                            0);
 }

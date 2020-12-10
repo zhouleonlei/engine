@@ -33,6 +33,7 @@ class TizenSurfaceGL : public TizenSurface {
   bool IsValid();
   bool InitalizeDisplay();
   void Destroy();
+  void SetSize(int32_t width, int32_t height);
   Ecore_Wl2_Window* wl2_window() { return wl2_window_; }
 
  private:

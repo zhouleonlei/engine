@@ -18,8 +18,9 @@ class TizenSurface {
   virtual uint32_t OnGetFBO() = 0;
   virtual void* OnProcResolver(const char* name) = 0;
   virtual bool IsValid() = 0;
-  uint32_t GetWidth();
-  uint32_t GetHeight();
+  virtual void SetSize(int32_t width, int32_t height) = 0;
+  int32_t GetWidth();
+  int32_t GetHeight();
 
  protected:
   const int32_t window_width_;

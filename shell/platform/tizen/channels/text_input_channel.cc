@@ -4,12 +4,14 @@
 
 #include "text_input_channel.h"
 
+#include <Ecore.h>
 #include <Ecore_IMF_Evas.h>
 
 #include "flutter/shell/platform/tizen/logger.h"
+#include "flutter/shell/platform/tizen/tizen_embedder_engine.h"
+#include "flutter/shell/platform/tizen/tizen_surface.h"
 #include "stdlib.h"
 #include "string.h"
-
 static constexpr char kSetEditingStateMethod[] = "TextInput.setEditingState";
 static constexpr char kClearClientMethod[] = "TextInput.clearClient";
 static constexpr char kSetClientMethod[] = "TextInput.setClient";
@@ -54,15 +56,15 @@ static bool IsASCIIPrintableKey(char c) {
   return false;
 }
 
-static void CommitCallback(void* data, Ecore_IMF_Context* ctx,
-                           void* event_info) {
+void TextInputChannel::CommitCallback(void* data, Ecore_IMF_Context* ctx,
+                                      void* event_info) {
   TextInputChannel* self = (TextInputChannel*)data;
   char* str = (char*)event_info;
   self->OnCommit(str);
 }
 
-static void PreeditCallback(void* data, Ecore_IMF_Context* ctx,
-                            void* event_info) {
+void TextInputChannel::PreeditCallback(void* data, Ecore_IMF_Context* ctx,
+                                       void* event_info) {
   TextInputChannel* self = (TextInputChannel*)data;
   char* preedit_string = nullptr;
   int cursor_pos;
@@ -73,34 +75,54 @@ static void PreeditCallback(void* data, Ecore_IMF_Context* ctx,
   }
 }
 
-static void PrivateCommandCallback(void* data, Ecore_IMF_Context* ctx,
-                                   void* event_info) {
+void TextInputChannel::PrivateCommandCallback(void* data,
+                                              Ecore_IMF_Context* ctx,
+                                              void* event_info) {
   // TODO
   LoggerD("Unimplemented");
 }
 
-static void DeleteSurroundingCallback(void* data, Ecore_IMF_Context* ctx,
-                                      void* event_info) {
+void TextInputChannel::DeleteSurroundingCallback(void* data,
+                                                 Ecore_IMF_Context* ctx,
+                                                 void* event_info) {
   // TODO
   LoggerD("Unimplemented");
 }
 
-static void InputPanelStatChangedCallback(void* data,
-                                          Ecore_IMF_Context* context,
-                                          int value) {
+void TextInputChannel::InputPanelStateChangedCallback(
+    void* data, Ecore_IMF_Context* context, int value) {
   if (!data) {
     LoggerD("[No Data]\n");
     return;
   }
   TextInputChannel* self = (TextInputChannel*)data;
   switch (value) {
-    case ECORE_IMF_INPUT_PANEL_STATE_SHOW:
+    case ECORE_IMF_INPUT_PANEL_STATE_SHOW: {
       LoggerD("[PANEL_STATE_SHOW]\n");
-      self->ShowSoftwareKeyboard();
-      break;
+      if (self->engine_->device_profile ==
+          "mobile") {  // FIXME : Needs improvement on other devices.
+        ecore_timer_add(
+            0.25,
+            [](void* data) -> Eina_Bool {
+              TextInputChannel* self = (TextInputChannel*)data;
+              int32_t surface_w = self->engine_->tizen_surface->GetWidth();
+              int32_t surface_h = self->engine_->tizen_surface->GetHeight() -
+                                  self->current_keyboard_geometry_.h;
+              self->engine_->tizen_surface->SetSize(surface_w, surface_h);
+              if (self->rotation == 90 || self->rotation == 270) {
+                self->engine_->SendWindowMetrics(surface_h, surface_w, 0);
+              } else {
+                self->engine_->SendWindowMetrics(surface_w, surface_h, 0);
+              }
+
+              return ECORE_CALLBACK_CANCEL;
+            },
+            self);
+      }
+    } break;
     case ECORE_IMF_INPUT_PANEL_STATE_HIDE:
+      self->HideSoftwareKeyboard();  // FIXME: Fallback for HW back-key
       LoggerD("[PANEL_STATE_HIDE]\n");
-      self->HideSoftwareKeyboard();
       break;
     case ECORE_IMF_INPUT_PANEL_STATE_WILL_SHOW:
       LoggerD("[PANEL_STATE_WILL_SHOW]\n");
@@ -111,8 +133,28 @@ static void InputPanelStatChangedCallback(void* data,
   }
 }
 
-static Eina_Bool RetrieveSurroundingCallback(void* data, Ecore_IMF_Context* ctx,
-                                             char** text, int* cursor_pos) {
+void TextInputChannel::InputPanelGeometryChangedCallback(
+    void* data, Ecore_IMF_Context* context, int value) {
+  if (!data) {
+    LoggerD("[No Data]\n");
+    return;
+  }
+  TextInputChannel* self = (TextInputChannel*)data;
+  ecore_imf_context_input_panel_geometry_get(
+      self->imfContext_, &self->current_keyboard_geometry_.x,
+      &self->current_keyboard_geometry_.y, &self->current_keyboard_geometry_.w,
+      &self->current_keyboard_geometry_.h);
+
+  LoggerD(
+      "[Current keyboard geometry] x:%d y:%d w:%d h:%d\n",
+      self->current_keyboard_geometry_.x, self->current_keyboard_geometry_.y,
+      self->current_keyboard_geometry_.w, self->current_keyboard_geometry_.h);
+}
+
+Eina_Bool TextInputChannel::RetrieveSurroundingCallback(void* data,
+                                                        Ecore_IMF_Context* ctx,
+                                                        char** text,
+                                                        int* cursor_pos) {
   // TODO
   if (text) {
     *text = strdup("");
@@ -226,21 +268,15 @@ Ecore_IMF_Device_Subclass EoreDeviceSubClassToEcoreIMFDeviceSubClass(
 }
 
 TextInputChannel::TextInputChannel(flutter::BinaryMessenger* messenger,
-                                   Ecore_Wl2_Window* ecoreWindow)
+                                   TizenEmbedderEngine* engine)
     : channel_(std::make_unique<flutter::MethodChannel<rapidjson::Document>>(
           messenger, kChannelName, &flutter::JsonMethodCodec::GetInstance())),
       active_model_(nullptr),
       isSoftwareKeyboardShowing_(false),
       lastPreeditStringLength_(0),
       imfContext_(nullptr),
-      isWearable_(false),
-      inSelectMode_(false) {
-  const char* elmProfile = getenv("ELM_PROFILE");
-  if (!elmProfile || strcmp(elmProfile, "wearable") == 0) {
-    LoggerD("ELM_PROFILE is wearable");
-    isWearable_ = true;
-  }
-
+      inSelectMode_(false),
+      engine_(engine) {
   channel_->SetMethodCallHandler(
       [this](
           const flutter::MethodCall<rapidjson::Document>& call,
@@ -256,6 +292,8 @@ TextInputChannel::TextInputChannel(flutter::BinaryMessenger* messenger,
     imfContext_ = ecore_imf_context_add(getImfMethod());
   }
   if (imfContext_) {
+    Ecore_Wl2_Window* ecoreWindow =
+        ((TizenSurfaceGL*)engine_->tizen_surface.get())->wl2_window();
     ecore_imf_context_client_window_set(
         imfContext_, (void*)ecore_wl2_window_id_get(ecoreWindow));
     RegisterIMFCallback(ecoreWindow);
@@ -391,8 +429,8 @@ void TextInputChannel::SendStateUpdate(const flutter::TextInputModel& model) {
 }
 
 bool TextInputChannel::FilterEvent(Ecore_Event_Key* keyDownEvent) {
+  LoggerD("NonIMFFallback key name [%s]", keyDownEvent->keyname);
   bool handled = false;
-
   const char* device = ecore_device_name_get(keyDownEvent->dev);
 
   Ecore_IMF_Event_Key_Down ecoreKeyDownEvent;
@@ -414,7 +452,7 @@ bool TextInputChannel::FilterEvent(Ecore_Event_Key* keyDownEvent) {
 
   bool isIME = strcmp(device, "ime") == 0;
   if (isIME && strcmp(keyDownEvent->key, "Select") == 0) {
-    if (isWearable_) {
+    if (engine_->device_profile == "wearable") {
       inSelectMode_ = true;
     } else {
       SelectPressed(active_model_.get());
@@ -563,9 +601,33 @@ void TextInputChannel::HideSoftwareKeyboard() {
           isSoftwareKeyboardShowing_);
   if (imfContext_ && isSoftwareKeyboardShowing_) {
     isSoftwareKeyboardShowing_ = false;
-    ecore_imf_context_reset(imfContext_);
-    ecore_imf_context_focus_out(imfContext_);
-    ecore_imf_context_input_panel_hide(imfContext_);
+
+    if (engine_->device_profile ==
+        "mobile") {  // FIXME : Needs improvement on other devices.
+      auto w = engine_->tizen_surface->GetWidth();
+      auto h = engine_->tizen_surface->GetHeight();
+
+      if (rotation == 90 || rotation == 270) {
+        engine_->SendWindowMetrics(h, w, 0);
+      } else {
+        engine_->SendWindowMetrics(w, h, 0);
+      }
+      engine_->tizen_surface->SetSize(w, h);
+      ecore_timer_add(
+          0.05,
+          [](void* data) -> Eina_Bool {
+            Ecore_IMF_Context* imfContext = (Ecore_IMF_Context*)data;
+            ecore_imf_context_reset(imfContext);
+            ecore_imf_context_focus_out(imfContext);
+            ecore_imf_context_input_panel_hide(imfContext);
+            return ECORE_CALLBACK_CANCEL;
+          },
+          imfContext_);
+    } else {
+      ecore_imf_context_reset(imfContext_);
+      ecore_imf_context_focus_out(imfContext_);
+      ecore_imf_context_input_panel_hide(imfContext_);
+    }
   }
 }
 
@@ -583,7 +645,10 @@ void TextInputChannel::RegisterIMFCallback(Ecore_Wl2_Window* ecoreWindow) {
                                        PrivateCommandCallback, this);
   ecore_imf_context_input_panel_event_callback_add(
       imfContext_, ECORE_IMF_INPUT_PANEL_STATE_EVENT,
-      InputPanelStatChangedCallback, this);
+      InputPanelStateChangedCallback, this);
+  ecore_imf_context_input_panel_event_callback_add(
+      imfContext_, ECORE_IMF_INPUT_PANEL_GEOMETRY_EVENT,
+      InputPanelGeometryChangedCallback, this);
   ecore_imf_context_retrieve_surrounding_callback_set(
       imfContext_, RetrieveSurroundingCallback, this);
 
@@ -613,5 +678,8 @@ void TextInputChannel::UnregisterIMFCallback() {
                                        PrivateCommandCallback);
   ecore_imf_context_input_panel_event_callback_del(
       imfContext_, ECORE_IMF_INPUT_PANEL_STATE_EVENT,
-      InputPanelStatChangedCallback);
+      InputPanelStateChangedCallback);
+  ecore_imf_context_input_panel_event_callback_del(
+      imfContext_, ECORE_IMF_INPUT_PANEL_GEOMETRY_EVENT,
+      InputPanelGeometryChangedCallback);
 }

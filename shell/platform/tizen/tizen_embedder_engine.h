@@ -76,6 +76,7 @@ class TizenEmbedderEngine {
   void SetPluginRegistrarDestructionCallback(
       FlutterDesktopOnPluginRegistrarDestroyed callback);
 
+  void SendWindowMetrics(int32_t width, int32_t height, double pixel_ratio);
   void SetWindowOrientation(int32_t degree);
   void SendLocales();
   void AppIsInactive();
@@ -105,6 +106,9 @@ class TizenEmbedderEngine {
   std::unique_ptr<TextInputChannel> text_input_channel;
   std::unique_ptr<PlatformViewChannel> platform_view_channel;
 
+  const std::string device_profile;
+  const double device_dpi;
+
  private:
   static bool MakeContextCurrent(void* user_data);
   static bool ClearContext(void* user_data);
@@ -117,7 +121,6 @@ class TizenEmbedderEngine {
       const FlutterPlatformMessage* engine_message, void* user_data);
   static void OnVsyncCallback(void* user_data, intptr_t baton);
 
-  void SendWindowMetrics(int32_t width, int32_t height, double pixel_ratio);
   FlutterDesktopMessage ConvertToDesktopMessage(
       const FlutterPlatformMessage& engine_message);
   static bool OnAcquireExternalTexture(void* user_data, int64_t texture_id,

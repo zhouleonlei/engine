@@ -16,8 +16,25 @@
 // Unique number associated with platform tasks.
 static constexpr size_t kPlatformTaskRunnerIdentifier = 1;
 
+static std::string GetDeviceProfile() {
+  char* feature_profile;
+  system_info_get_platform_string("http://tizen.org/feature/profile",
+                                  &feature_profile);
+  std::string profile(feature_profile);
+  free(feature_profile);
+  return profile;
+}
+
+static double GetDeviceDpi() {
+  int feature_dpi;
+  system_info_get_platform_int("http://tizen.org/feature/screen.dpi",
+                               &feature_dpi);
+  return (double)feature_dpi;
+}
+
 TizenEmbedderEngine::TizenEmbedderEngine(
-    const FlutterWindowProperties& window_properties) {
+    const FlutterWindowProperties& window_properties)
+    : device_profile(GetDeviceProfile()), device_dpi(GetDeviceDpi()) {
   tizen_surface = std::make_unique<TizenSurfaceGL>(
       window_properties.x, window_properties.y, window_properties.width,
       window_properties.height);
@@ -163,8 +180,7 @@ bool TizenEmbedderEngine::RunEngine(
   settings_channel = std::make_unique<SettingsChannel>(
       internal_plugin_registrar_->messenger());
   text_input_channel = std::make_unique<TextInputChannel>(
-      internal_plugin_registrar_->messenger(),
-      ((TizenSurfaceGL*)tizen_surface.get())->wl2_window());
+      internal_plugin_registrar_->messenger(), this);
   localization_channel = std::make_unique<LocalizationChannel>(flutter_engine);
   localization_channel->SendLocales();
   lifecycle_channel = std::make_unique<LifecycleChannel>(flutter_engine);
@@ -210,22 +226,6 @@ bool TizenEmbedderEngine::OnAcquireExternalTexture(
       ->PopulateTextureWithIdentifier(width, height, texture);
 }
 
-std::string GetDeviceProfile() {
-  char* feature_profile;
-  system_info_get_platform_string("http://tizen.org/feature/profile",
-                                  &feature_profile);
-  std::string profile(feature_profile);
-  free(feature_profile);
-  return profile;
-}
-
-double GetDeviceDpi() {
-  int feature_dpi;
-  system_info_get_platform_int("http://tizen.org/feature/screen.dpi",
-                               &feature_dpi);
-  return (double)feature_dpi;
-}
-
 void TizenEmbedderEngine::SendWindowMetrics(int32_t width, int32_t height,
                                             double pixel_ratio) {
   FlutterWindowMetricsEvent event;
@@ -236,16 +236,15 @@ void TizenEmbedderEngine::SendWindowMetrics(int32_t width, int32_t height,
     // The scale factor is computed based on the display DPI and the current
     // profile. A fixed DPI value (72) is used on TVs. See:
     // https://docs.tizen.org/application/native/guides/ui/efl/multiple-screens
-    std::string profile = GetDeviceProfile();
     double profile_factor = 1.0;
-    if (profile == "wearable") {
+    if (device_profile == "wearable") {
       profile_factor = 0.4;
-    } else if (profile == "mobile") {
+    } else if (device_profile == "mobile") {
       profile_factor = 0.7;
-    } else if (profile == "tv") {
+    } else if (device_profile == "tv") {
       profile_factor = 2.0;
     }
-    double dpi = profile == "tv" ? 72.0 : GetDeviceDpi();
+    double dpi = device_profile == "tv" ? 72.0 : device_dpi;
     double scale_factor = dpi / 90.0 * profile_factor;
     event.pixel_ratio = std::max(scale_factor, 1.0);
   } else {
@@ -265,6 +264,11 @@ void TizenEmbedderEngine::SetWindowOrientation(int32_t degree) {
   double rad = (360 - degree) * M_PI / 180;
   double width = tizen_surface->GetWidth();
   double height = tizen_surface->GetHeight();
+
+  if (text_input_channel->isSoftwareKeyboardShowing()) {
+    height -= text_input_channel->GetCurrentKeyboardGeometry().h;
+  }
+
   double trans_x = 0.0, trans_y = 0.0;
   if (degree == 90) {
     trans_y = height;
@@ -280,7 +284,7 @@ void TizenEmbedderEngine::SetWindowOrientation(int32_t degree) {
       0.0,      0.0,       1.0       // perspective
   };
   touch_event_handler_->rotation = degree;
-
+  text_input_channel->rotation = degree;
   if (degree == 90 || degree == 270) {
     SendWindowMetrics(height, width, 0.0);
   } else {

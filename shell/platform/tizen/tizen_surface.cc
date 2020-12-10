@@ -9,6 +9,6 @@ TizenSurface::TizenSurface(int32_t x, int32_t y, int32_t width, int32_t height)
 
 TizenSurface::~TizenSurface() {}
 
-uint32_t TizenSurface::GetWidth() { return window_width_; }
+int32_t TizenSurface::GetWidth() { return window_width_; }
 
-uint32_t TizenSurface::GetHeight() { return window_height_; }
+int32_t TizenSurface::GetHeight() { return window_height_; }

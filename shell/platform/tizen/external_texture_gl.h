@@ -43,6 +43,7 @@ class ExternalTextureGL {
                                      FlutterOpenGLTexture* opengl_texture);
   bool OnFrameAvailable(tbm_surface_h tbm_surface);
   void DestructionTbmSurface();
+  void DestructionTbmSurfaceWithLock();
 
  private:
   std::unique_ptr<ExternalTextureGLState> state_;

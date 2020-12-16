@@ -62,26 +62,26 @@ source_set("flutter_tizen") {
   ]
 
   include_dirs = [
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/appfw",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/base",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/dlog",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/ecore-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/ecore-evas-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/ecore-imf-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/ecore-imf-evas-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/ecore-input-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/ecore-wl2-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/efl-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/eina-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/eina-1/eina",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/emile-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/eo-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/evas-1",
-    "//third_party/tizen_tools/sysroot/$target_cpu/usr/include/system",
+    "$custom_sysroot/usr/include",
+    "$custom_sysroot/usr/include/appfw",
+    "$custom_sysroot/usr/include/base",
+    "$custom_sysroot/usr/include/dlog",
+    "$custom_sysroot/usr/include/ecore-1",
+    "$custom_sysroot/usr/include/ecore-evas-1",
+    "$custom_sysroot/usr/include/ecore-imf-1",
+    "$custom_sysroot/usr/include/ecore-imf-evas-1",
+    "$custom_sysroot/usr/include/ecore-input-1",
+    "$custom_sysroot/usr/include/ecore-wl2-1",
+    "$custom_sysroot/usr/include/efl-1",
+    "$custom_sysroot/usr/include/eina-1",
+    "$custom_sysroot/usr/include/eina-1/eina",
+    "$custom_sysroot/usr/include/emile-1",
+    "$custom_sysroot/usr/include/eo-1",
+    "$custom_sysroot/usr/include/evas-1",
+    "$custom_sysroot/usr/include/system",
   ]
   
-  lib_dirs = [ "//third_party/tizen_tools/sysroot/$target_cpu/usr/lib" ]
+  lib_dirs = [ "$custom_sysroot/usr/lib" ]
 
   cflags_cc = [
     "-Wno-newline-eof",

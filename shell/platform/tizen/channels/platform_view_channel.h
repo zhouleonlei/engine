@@ -5,6 +5,8 @@
 #ifndef EMBEDDER_PLATFORM_VIEW_CHANNEL_H_
 #define EMBEDDER_PLATFORM_VIEW_CHANNEL_H_
 
+#include <Ecore_Input.h>
+
 #include <map>
 
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/binary_messenger.h"
@@ -20,6 +22,10 @@ class PlatformViewChannel {
   std::map<std::string, std::unique_ptr<PlatformViewFactory>>& viewFactories() {
     return view_factories_;
   }
+  std::map<int, PlatformView*>& viewInstances() { return view_instances_; }
+
+  void sendKeyEvent(Ecore_Event_Key* key, bool is_down);
+  int currentFocusedViewId();
 
  private:
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;

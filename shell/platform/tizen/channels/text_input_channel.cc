@@ -21,6 +21,8 @@ static constexpr char kMultilineInputType[] = "TextInputType.multiline";
 static constexpr char kUpdateEditingStateMethod[] =
     "TextInputClient.updateEditingState";
 static constexpr char kPerformActionMethod[] = "TextInputClient.performAction";
+static constexpr char kSetPlatformViewClient[] =
+    "TextInput.setPlatformViewClient";
 static constexpr char kTextInputAction[] = "inputAction";
 static constexpr char kTextInputType[] = "inputType";
 static constexpr char kTextInputTypeName[] = "name";
@@ -329,6 +331,8 @@ void TextInputChannel::HandleMethodCall(
     ShowSoftwareKeyboard();
   } else if (method.compare(kHideMethod) == 0) {
     HideSoftwareKeyboard();
+  } else if (method.compare(kSetPlatformViewClient) == 0) {
+    // TODO: implement if necessary
   } else if (method.compare(kClearClientMethod) == 0) {
     active_model_ = nullptr;
   } else if (method.compare(kSetClientMethod) == 0) {

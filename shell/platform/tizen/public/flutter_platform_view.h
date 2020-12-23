@@ -5,6 +5,7 @@
 #ifndef FLUTTER_SHELL_PLATFORM_TIZEN_PUBLIC_FLUTTER_PLATFORM_VIEW_H_
 #define FLUTTER_SHELL_PLATFORM_TIZEN_PUBLIC_FLUTTER_PLATFORM_VIEW_H_
 
+#include <Ecore_Input.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -15,7 +16,10 @@ using ByteMessage = std::vector<uint8_t>;
 class PlatformView {
  public:
   PlatformView(flutter::PluginRegistrar* registrar, int viewId)
-      : registrar_(registrar), viewId_(viewId), textureId_(0) {}
+      : registrar_(registrar),
+        viewId_(viewId),
+        textureId_(0),
+        isFocused_(false) {}
   virtual ~PlatformView() {}
   int getViewId() { return viewId_; }
   int getTextureId() { return textureId_; }
@@ -27,11 +31,18 @@ class PlatformView {
                      double dy) = 0;
   virtual void setDirection(int direction) = 0;
   virtual void clearFocus() = 0;
+  void setFocus(bool f) { isFocused_ = f; }
+  bool isFocused() { return isFocused_; }
+
+  // Key input event
+  virtual void dispatchKeyDownEvent(Ecore_Event_Key* key) = 0;
+  virtual void dispatchKeyUpEvent(Ecore_Event_Key* key) = 0;
 
  private:
   flutter::PluginRegistrar* registrar_;
   int viewId_;
   int textureId_;
+  bool isFocused_;
 };
 
 class PlatformViewFactory {

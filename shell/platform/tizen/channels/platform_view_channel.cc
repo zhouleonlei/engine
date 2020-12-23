@@ -89,6 +89,27 @@ PlatformViewChannel::~PlatformViewChannel() {
   view_instances_.clear();
 }
 
+void PlatformViewChannel::sendKeyEvent(Ecore_Event_Key* key, bool is_down) {
+  auto instances = viewInstances();
+  auto it = instances.find(currentFocusedViewId());
+  if (it != instances.end()) {
+    if (is_down) {
+      it->second->dispatchKeyDownEvent(key);
+    } else {
+      it->second->dispatchKeyUpEvent(key);
+    }
+  }
+}
+
+int PlatformViewChannel::currentFocusedViewId() {
+  for (auto it = view_instances_.begin(); it != view_instances_.end(); it++) {
+    if (it->second->isFocused()) {
+      return it->second->getViewId();
+    }
+  }
+  return -1;
+}
+
 void PlatformViewChannel::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -113,10 +134,22 @@ void PlatformViewChannel::HandleMethodCall(
     }
     auto it = view_factories_.find(viewType);
     if (it != view_factories_.end()) {
+      auto focuesdView = view_instances_.find(currentFocusedViewId());
+      if (focuesdView != view_instances_.end()) {
+        focuesdView->second->setFocus(false);
+      }
+
       auto viewInstance =
           it->second->create(viewId, width, height, byteMessage);
+      viewInstance->setFocus(true);
       view_instances_.insert(
           std::pair<int, PlatformView*>(viewId, viewInstance));
+
+      if (channel_ != nullptr) {
+        auto id = std::make_unique<flutter::EncodableValue>(viewId);
+        channel_->InvokeMethod("viewFocused", std::move(id));
+      }
+
       result->Success(flutter::EncodableValue(viewInstance->getTextureId()));
     } else {
       LoggerE("can't find view type = %s", viewType.c_str());

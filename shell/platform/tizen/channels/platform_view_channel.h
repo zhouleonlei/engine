@@ -19,13 +19,13 @@ class PlatformViewChannel {
  public:
   explicit PlatformViewChannel(flutter::BinaryMessenger* messenger);
   virtual ~PlatformViewChannel();
-  std::map<std::string, std::unique_ptr<PlatformViewFactory>>& viewFactories() {
+  std::map<std::string, std::unique_ptr<PlatformViewFactory>>& ViewFactories() {
     return view_factories_;
   }
-  std::map<int, PlatformView*>& viewInstances() { return view_instances_; }
+  std::map<int, PlatformView*>& ViewInstances() { return view_instances_; }
 
-  void sendKeyEvent(Ecore_Event_Key* key, bool is_down);
-  int currentFocusedViewId();
+  void SendKeyEvent(Ecore_Event_Key* key, bool is_down);
+  int CurrentFocusedViewId();
 
  private:
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;

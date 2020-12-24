@@ -40,7 +40,7 @@ Eina_Bool KeyEventHandler::OnKey(void *data, int type, void *event) {
       if (is_down) {
         engine->text_input_channel->OnKeyDown(key);
       }
-      if (engine->text_input_channel->isSoftwareKeyboardShowing()) {
+      if (engine->text_input_channel->IsSoftwareKeyboardShowing()) {
         return ECORE_CALLBACK_PASS_ON;
       }
     }
@@ -48,7 +48,7 @@ Eina_Bool KeyEventHandler::OnKey(void *data, int type, void *event) {
       engine->key_event_channel->SendKeyEvent(key, is_down);
     }
     if (engine->platform_view_channel) {
-      engine->platform_view_channel->sendKeyEvent(key, is_down);
+      engine->platform_view_channel->SendKeyEvent(key, is_down);
     }
   }
   return ECORE_CALLBACK_PASS_ON;

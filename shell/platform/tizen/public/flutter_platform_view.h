@@ -21,22 +21,22 @@ class PlatformView {
         textureId_(0),
         isFocused_(false) {}
   virtual ~PlatformView() {}
-  int getViewId() { return viewId_; }
-  int getTextureId() { return textureId_; }
-  void setTextureId(int textureId) { textureId_ = textureId; }
-  flutter::PluginRegistrar* getPluginRegistrar() { return registrar_; }
-  virtual void dispose() = 0;
-  virtual void resize(double width, double height) = 0;
-  virtual void touch(int type, int button, double x, double y, double dx,
+  int GetViewId() { return viewId_; }
+  int GetTextureId() { return textureId_; }
+  void SetTextureId(int textureId) { textureId_ = textureId; }
+  flutter::PluginRegistrar* GetPluginRegistrar() { return registrar_; }
+  virtual void Dispose() = 0;
+  virtual void Resize(double width, double height) = 0;
+  virtual void Touch(int type, int button, double x, double y, double dx,
                      double dy) = 0;
-  virtual void setDirection(int direction) = 0;
-  virtual void clearFocus() = 0;
-  void setFocus(bool f) { isFocused_ = f; }
-  bool isFocused() { return isFocused_; }
+  virtual void SetDirection(int direction) = 0;
+  virtual void ClearFocus() = 0;
+  void SetFocus(bool f) { isFocused_ = f; }
+  bool IsFocused() { return isFocused_; }
 
   // Key input event
-  virtual void dispatchKeyDownEvent(Ecore_Event_Key* key) = 0;
-  virtual void dispatchKeyUpEvent(Ecore_Event_Key* key) = 0;
+  virtual void DispatchKeyDownEvent(Ecore_Event_Key* key) = 0;
+  virtual void DispatchKeyUpEvent(Ecore_Event_Key* key) = 0;
 
  private:
   flutter::PluginRegistrar* registrar_;
@@ -51,13 +51,13 @@ class PlatformViewFactory {
       : registrar_(registrar),
         codec_(flutter::StandardMessageCodec::GetInstance(nullptr)) {}
   virtual ~PlatformViewFactory() {}
-  flutter::PluginRegistrar* getPluginRegistrar() { return registrar_; }
-  const flutter::MessageCodec<flutter::EncodableValue>& getCodec() {
+  flutter::PluginRegistrar* GetPluginRegistrar() { return registrar_; }
+  const flutter::MessageCodec<flutter::EncodableValue>& GetCodec() {
     return codec_;
   }
-  virtual PlatformView* create(int viewId, double width, double height,
+  virtual PlatformView* Create(int viewId, double width, double height,
                                const ByteMessage& createParams) = 0;
-  virtual void dispose() = 0;
+  virtual void Dispose() = 0;
 
  private:
   flutter::PluginRegistrar* registrar_;

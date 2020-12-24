@@ -12,7 +12,7 @@
 
 static constexpr char kChannelName[] = "flutter/platform_views";
 
-std::string extractStringFromMap(const flutter::EncodableValue& arguments,
+std::string ExtractStringFromMap(const flutter::EncodableValue& arguments,
                                  const char* key) {
   if (std::holds_alternative<flutter::EncodableMap>(arguments)) {
     flutter::EncodableMap values = std::get<flutter::EncodableMap>(arguments);
@@ -22,7 +22,7 @@ std::string extractStringFromMap(const flutter::EncodableValue& arguments,
   }
   return std::string();
 }
-int extractIntFromMap(const flutter::EncodableValue& arguments,
+int ExtractIntFromMap(const flutter::EncodableValue& arguments,
                       const char* key) {
   if (std::holds_alternative<flutter::EncodableMap>(arguments)) {
     flutter::EncodableMap values = std::get<flutter::EncodableMap>(arguments);
@@ -31,7 +31,7 @@ int extractIntFromMap(const flutter::EncodableValue& arguments,
   }
   return -1;
 }
-double extractDoubleFromMap(const flutter::EncodableValue& arguments,
+double ExtractDoubleFromMap(const flutter::EncodableValue& arguments,
                             const char* key) {
   if (std::holds_alternative<flutter::EncodableMap>(arguments)) {
     flutter::EncodableMap values = std::get<flutter::EncodableMap>(arguments);
@@ -41,7 +41,7 @@ double extractDoubleFromMap(const flutter::EncodableValue& arguments,
   return -1;
 }
 
-flutter::EncodableMap extractMapFromMap(
+flutter::EncodableMap ExtractMapFromMap(
     const flutter::EncodableValue& arguments, const char* key) {
   if (std::holds_alternative<flutter::EncodableMap>(arguments)) {
     flutter::EncodableMap values = std::get<flutter::EncodableMap>(arguments);
@@ -52,7 +52,7 @@ flutter::EncodableMap extractMapFromMap(
   return flutter::EncodableMap();
 }
 
-flutter::EncodableList extractListFromMap(
+flutter::EncodableList ExtractListFromMap(
     const flutter::EncodableValue& arguments, const char* key) {
   if (std::holds_alternative<flutter::EncodableMap>(arguments)) {
     flutter::EncodableMap values = std::get<flutter::EncodableMap>(arguments);
@@ -77,34 +77,34 @@ PlatformViewChannel::PlatformViewChannel(flutter::BinaryMessenger* messenger)
 PlatformViewChannel::~PlatformViewChannel() {
   // Clean-up view_factories_
   for (auto const& [viewType, viewFactory] : view_factories_) {
-    viewFactory->dispose();
+    viewFactory->Dispose();
   }
   view_factories_.clear();
 
   // Clean-up view_instances_
   for (auto const& [viewId, viewInstance] : view_instances_) {
-    viewInstance->dispose();
+    viewInstance->Dispose();
     delete viewInstance;
   }
   view_instances_.clear();
 }
 
-void PlatformViewChannel::sendKeyEvent(Ecore_Event_Key* key, bool is_down) {
-  auto instances = viewInstances();
-  auto it = instances.find(currentFocusedViewId());
+void PlatformViewChannel::SendKeyEvent(Ecore_Event_Key* key, bool is_down) {
+  auto instances = ViewInstances();
+  auto it = instances.find(CurrentFocusedViewId());
   if (it != instances.end()) {
     if (is_down) {
-      it->second->dispatchKeyDownEvent(key);
+      it->second->DispatchKeyDownEvent(key);
     } else {
-      it->second->dispatchKeyUpEvent(key);
+      it->second->DispatchKeyUpEvent(key);
     }
   }
 }
 
-int PlatformViewChannel::currentFocusedViewId() {
+int PlatformViewChannel::CurrentFocusedViewId() {
   for (auto it = view_instances_.begin(); it != view_instances_.end(); it++) {
-    if (it->second->isFocused()) {
-      return it->second->getViewId();
+    if (it->second->IsFocused()) {
+      return it->second->GetViewId();
     }
   }
   return -1;
@@ -117,10 +117,10 @@ void PlatformViewChannel::HandleMethodCall(
   const auto& arguments = *call.arguments();
 
   if (method == "create") {
-    std::string viewType = extractStringFromMap(arguments, "viewType");
-    int viewId = extractIntFromMap(arguments, "id");
-    double width = extractDoubleFromMap(arguments, "width");
-    double height = extractDoubleFromMap(arguments, "height");
+    std::string viewType = ExtractStringFromMap(arguments, "viewType");
+    int viewId = ExtractIntFromMap(arguments, "id");
+    double width = ExtractDoubleFromMap(arguments, "width");
+    double height = ExtractDoubleFromMap(arguments, "height");
 
     LoggerD(
         "PlatformViewChannel create viewType: %s id: %d width: %f height: %f ",
@@ -134,14 +134,14 @@ void PlatformViewChannel::HandleMethodCall(
     }
     auto it = view_factories_.find(viewType);
     if (it != view_factories_.end()) {
-      auto focuesdView = view_instances_.find(currentFocusedViewId());
+      auto focuesdView = view_instances_.find(CurrentFocusedViewId());
       if (focuesdView != view_instances_.end()) {
-        focuesdView->second->setFocus(false);
+        focuesdView->second->SetFocus(false);
       }
 
       auto viewInstance =
-          it->second->create(viewId, width, height, byteMessage);
-      viewInstance->setFocus(true);
+          it->second->Create(viewId, width, height, byteMessage);
+      viewInstance->SetFocus(true);
       view_instances_.insert(
           std::pair<int, PlatformView*>(viewId, viewInstance));
 
@@ -150,30 +150,30 @@ void PlatformViewChannel::HandleMethodCall(
         channel_->InvokeMethod("viewFocused", std::move(id));
       }
 
-      result->Success(flutter::EncodableValue(viewInstance->getTextureId()));
+      result->Success(flutter::EncodableValue(viewInstance->GetTextureId()));
     } else {
       LoggerE("can't find view type = %s", viewType.c_str());
       result->Error("0", "can't find view type");
     }
   } else {
-    int viewId = extractIntFromMap(arguments, "id");
+    int viewId = ExtractIntFromMap(arguments, "id");
     auto it = view_instances_.find(viewId);
     if (viewId >= 0 && it != view_instances_.end()) {
       if (method == "dispose") {
         LoggerD("PlatformViewChannel dispose");
-        it->second->dispose();
+        it->second->Dispose();
         result->Success();
       } else if (method == "resize") {
         LoggerD("PlatformViewChannel resize");
-        double width = extractDoubleFromMap(arguments, "width");
-        double height = extractDoubleFromMap(arguments, "height");
-        it->second->resize(width, height);
+        double width = ExtractDoubleFromMap(arguments, "width");
+        double height = ExtractDoubleFromMap(arguments, "height");
+        it->second->Resize(width, height);
         result->NotImplemented();
       } else if (method == "touch") {
         int type, button;
         double x, y, dx, dy;
 
-        flutter::EncodableList event = extractListFromMap(arguments, "event");
+        flutter::EncodableList event = ExtractListFromMap(arguments, "event");
         if (event.size() != 6) {
           result->Error("Invalid Arguments");
           return;
@@ -185,14 +185,14 @@ void PlatformViewChannel::HandleMethodCall(
         dx = std::get<double>(event[4]);
         dy = std::get<double>(event[5]);
 
-        it->second->touch(type, button, x, y, dx, dy);
+        it->second->Touch(type, button, x, y, dx, dy);
         result->Success();
       } else if (method == "setDirection") {
         LoggerD("PlatformViewChannel setDirection");
         result->NotImplemented();
       } else if (method == "clearFocus") {
         LoggerD("PlatformViewChannel clearFocus");
-        it->second->clearFocus();
+        it->second->ClearFocus();
         result->NotImplemented();
       } else {
         LoggerD("Unimplemented method: %s", method.c_str());

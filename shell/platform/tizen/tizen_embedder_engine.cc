@@ -269,7 +269,7 @@ void TizenEmbedderEngine::SetWindowOrientation(int32_t degree) {
   double width = geometry.w;
   double height = geometry.h;
 
-  if (text_input_channel->isSoftwareKeyboardShowing()) {
+  if (text_input_channel->IsSoftwareKeyboardShowing()) {
     height -= text_input_channel->GetCurrentKeyboardGeometry().h;
   }
 

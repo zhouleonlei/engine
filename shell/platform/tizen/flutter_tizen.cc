@@ -6,13 +6,14 @@
 #include "public/flutter_tizen.h"
 
 #include <inttypes.h>
+
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/plugin_registrar.h"
-#include "flutter/shell/platform/common/cpp/incoming_message_dispatcher.h"
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/standard_message_codec.h"
+#include "flutter/shell/platform/common/cpp/incoming_message_dispatcher.h"
 #include "flutter/shell/platform/tizen/logger.h"
+#include "flutter/shell/platform/tizen/public/flutter_platform_view.h"
 #include "flutter/shell/platform/tizen/public/flutter_texture_registrar.h"
 #include "flutter/shell/platform/tizen/tizen_embedder_engine.h"
-#include "flutter/shell/platform/tizen/public/flutter_platform_view.h"
 
 // Opaque reference to a Tizen embedder engine.
 struct FlutterWindowControllerState {
@@ -266,7 +267,7 @@ bool FlutterMarkExternalTextureFrameAvailable(
 void FlutterRegisterViewFactory(
     FlutterDesktopPluginRegistrarRef registrar, const char* view_type,
     std::unique_ptr<PlatformViewFactory> view_factory) {
-  registrar->engine->platform_view_channel->viewFactories().insert(
+  registrar->engine->platform_view_channel->ViewFactories().insert(
       std::pair<std::string, std::unique_ptr<PlatformViewFactory>>(
           view_type, std::move(view_factory)));
 }

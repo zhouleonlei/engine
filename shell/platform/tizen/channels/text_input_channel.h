@@ -31,7 +31,7 @@ class TextInputChannel {
   void OnPredit(const char* str, int cursorPos);
   void ShowSoftwareKeyboard();
   void HideSoftwareKeyboard();
-  bool isSoftwareKeyboardShowing() { return isSoftwareKeyboardShowing_; }
+  bool IsSoftwareKeyboardShowing() { return isSoftwareKeyboardShowing_; }
   SoftwareKeyboardGeometry GetCurrentKeyboardGeometry() {
     return current_keyboard_geometry_;
   }

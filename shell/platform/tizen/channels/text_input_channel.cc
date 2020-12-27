@@ -300,7 +300,7 @@ TextInputChannel::TextInputChannel(flutter::BinaryMessenger* messenger,
         engine_->tizen_native_window->GetWindowHandle();
     ecore_imf_context_client_window_set(
         imfContext_, (void*)ecore_wl2_window_id_get(ecoreWindow));
-    RegisterIMFCallback(ecoreWindow);
+    RegisterIMFCallback();
   } else {
     LoggerE("Failed to create imfContext");
   }
@@ -636,7 +636,7 @@ void TextInputChannel::HideSoftwareKeyboard() {
   }
 }
 
-void TextInputChannel::RegisterIMFCallback(Ecore_Wl2_Window* ecoreWindow) {
+void TextInputChannel::RegisterIMFCallback() {
   // ecore_imf_context_input_panel_enabled_set(imfContext_, false);
   ecore_imf_context_event_callback_add(imfContext_, ECORE_IMF_CALLBACK_COMMIT,
                                        CommitCallback, this);

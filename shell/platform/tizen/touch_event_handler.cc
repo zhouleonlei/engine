@@ -20,8 +20,6 @@ TouchEventHandler::TouchEventHandler(TizenEmbedderEngine *engine)
       ecore_event_handler_add(ECORE_EVENT_MOUSE_WHEEL, OnTouch, this));
   touch_event_handlers_.push_back(
       ecore_event_handler_add(ECORE_EVENT_MOUSE_MOVE, OnTouch, this));
-  touch_event_handlers_.push_back(ecore_event_handler_add(
-      ECORE_WL2_EVENT_WINDOW_VISIBILITY_CHANGE, OnTouch, this));
 }
 
 TouchEventHandler::~TouchEventHandler() {
@@ -89,11 +87,6 @@ Eina_Bool TouchEventHandler::OnTouch(void *data, int type, void *event) {
       self->SendFlutterPointerEvent(kMove, move_event->x, move_event->y, 0, 0,
                                     move_event->timestamp);
     }
-  } else if (type == ECORE_WL2_EVENT_WINDOW_VISIBILITY_CHANGE) {
-    auto *focus_event =
-        reinterpret_cast<Ecore_Wl2_Event_Window_Visibility_Change *>(event);
-    LoggerD("Visibility changed: %u, %d", focus_event->win,
-            focus_event->fully_obscured);
   } else if (type == ECORE_EVENT_MOUSE_WHEEL) {
     auto *wheel_event = reinterpret_cast<Ecore_Event_Mouse_Wheel *>(event);
     double scroll_delta_x = 0.0, scroll_delta_y = 0.0;

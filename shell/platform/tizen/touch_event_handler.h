@@ -5,10 +5,7 @@
 #ifndef EMBEDDER_TOUCH_EVENT_HANDLER_H_
 #define EMBEDDER_TOUCH_EVENT_HANDLER_H_
 
-#define EFL_BETA_API_SUPPORT
 #include <Ecore_Input.h>
-#include <Ecore_Wl2.h>
-
 #include <vector>
 
 #include "flutter/shell/platform/embedder/embedder.h"

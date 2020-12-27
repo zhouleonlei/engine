@@ -47,7 +47,7 @@ class TextInputChannel {
   void NonIMFFallback(Ecore_Event_Key* keyDownEvent);
   void EnterPressed(flutter::TextInputModel* model);
   void SelectPressed(flutter::TextInputModel* model);
-  void RegisterIMFCallback(Ecore_Wl2_Window* ecoreWindow);
+  void RegisterIMFCallback();
   void UnregisterIMFCallback();
 
   std::unique_ptr<flutter::MethodChannel<rapidjson::Document>> channel_;

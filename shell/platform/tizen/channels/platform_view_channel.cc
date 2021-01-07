@@ -74,19 +74,20 @@ PlatformViewChannel::PlatformViewChannel(flutter::BinaryMessenger* messenger)
                  result) { HandleMethodCall(call, std::move(result)); });
 }
 
-PlatformViewChannel::~PlatformViewChannel() {
+PlatformViewChannel::~PlatformViewChannel() { Dispose(); }
+
+void PlatformViewChannel::Dispose() {
+  // Clean-up view_instances_
+  for (auto const& [viewId, viewInstance] : view_instances_) {
+    delete viewInstance;
+  }
+  view_instances_.clear();
+
   // Clean-up view_factories_
   for (auto const& [viewType, viewFactory] : view_factories_) {
     viewFactory->Dispose();
   }
   view_factories_.clear();
-
-  // Clean-up view_instances_
-  for (auto const& [viewId, viewInstance] : view_instances_) {
-    viewInstance->Dispose();
-    delete viewInstance;
-  }
-  view_instances_.clear();
 }
 
 void PlatformViewChannel::SendKeyEvent(Ecore_Event_Key* key, bool is_down) {

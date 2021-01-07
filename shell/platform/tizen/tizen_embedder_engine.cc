@@ -200,6 +200,9 @@ bool TizenEmbedderEngine::RunEngine(
 
 bool TizenEmbedderEngine::StopEngine() {
   if (flutter_engine) {
+    if (platform_view_channel) {
+      platform_view_channel->Dispose();
+    }
     if (plugin_registrar_destruction_callback_) {
       plugin_registrar_destruction_callback_(plugin_registrar_.get());
     }

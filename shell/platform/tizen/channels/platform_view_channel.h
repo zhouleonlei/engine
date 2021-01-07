@@ -19,6 +19,7 @@ class PlatformViewChannel {
  public:
   explicit PlatformViewChannel(flutter::BinaryMessenger* messenger);
   virtual ~PlatformViewChannel();
+  void Dispose();
   std::map<std::string, std::unique_ptr<PlatformViewFactory>>& ViewFactories() {
     return view_factories_;
   }

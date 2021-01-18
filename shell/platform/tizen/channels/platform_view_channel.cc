@@ -7,7 +7,9 @@
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/standard_message_codec.h"
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/standard_method_codec.h"
 #include "flutter/shell/platform/common/cpp/json_method_codec.h"
+#include "flutter/shell/platform/tizen/channels/text_input_channel.h"
 #include "flutter/shell/platform/tizen/public/flutter_platform_view.h"
+#include "flutter/shell/platform/tizen/tizen_embedder_engine.h"
 #include "flutter/shell/platform/tizen/tizen_log.h"
 
 static constexpr char kChannelName[] = "flutter/platform_views";
@@ -63,8 +65,10 @@ flutter::EncodableList ExtractListFromMap(
   return flutter::EncodableList();
 }
 
-PlatformViewChannel::PlatformViewChannel(flutter::BinaryMessenger* messenger)
-    : channel_(
+PlatformViewChannel::PlatformViewChannel(flutter::BinaryMessenger* messenger,
+                                         TizenEmbedderEngine* engine)
+    : engine_(engine),
+      channel_(
           std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
               messenger, kChannelName,
               &flutter::StandardMethodCodec::GetInstance())) {
@@ -117,6 +121,7 @@ void PlatformViewChannel::HandleMethodCall(
   const auto method = call.method_name();
   const auto& arguments = *call.arguments();
 
+  FT_LOGD("method: %s", method.c_str());
   if (method == "create") {
     std::string viewType = ExtractStringFromMap(arguments, "viewType");
     int viewId = ExtractIntFromMap(arguments, "id");
@@ -151,10 +156,28 @@ void PlatformViewChannel::HandleMethodCall(
         channel_->InvokeMethod("viewFocused", std::move(id));
       }
 
+      if (engine_ && engine_->text_input_channel) {
+        Ecore_IMF_Context* context =
+            engine_->text_input_channel->GetImfContext();
+        viewInstance->SetSoftwareKeyboardContext(context);
+      }
+
       result->Success(flutter::EncodableValue(viewInstance->GetTextureId()));
     } else {
       FT_LOGE("can't find view type = %s", viewType.c_str());
-      result->Error("0", "can't find view type");
+      result->Error("Can't find view type");
+    }
+  } else if (method == "clearFocus") {
+    int viewId = -1;
+    if (std::holds_alternative<int>(arguments)) {
+      viewId = std::get<int>(arguments);
+    };
+    auto it = view_instances_.find(viewId);
+    if (viewId >= 0 && it != view_instances_.end()) {
+      it->second->ClearFocus();
+      result->Success();
+    } else {
+      result->Error("Can't find view id");
     }
   } else {
     int viewId = ExtractIntFromMap(arguments, "id");
@@ -165,7 +188,6 @@ void PlatformViewChannel::HandleMethodCall(
         it->second->Dispose();
         result->Success();
       } else if (method == "resize") {
-        FT_LOGD("PlatformViewChannel resize");
         double width = ExtractDoubleFromMap(arguments, "width");
         double height = ExtractDoubleFromMap(arguments, "height");
         it->second->Resize(width, height);
@@ -191,17 +213,12 @@ void PlatformViewChannel::HandleMethodCall(
       } else if (method == "setDirection") {
         FT_LOGD("PlatformViewChannel setDirection");
         result->NotImplemented();
-      } else if (method == "clearFocus") {
-        FT_LOGD("PlatformViewChannel clearFocus");
-        it->second->ClearFocus();
-        result->NotImplemented();
       } else {
         FT_LOGD("Unimplemented method: %s", method.c_str());
         result->NotImplemented();
       }
     } else {
-      FT_LOGE("can't find view id");
-      result->Error("0", "can't find view id");
+      result->Error("Can't find view id");
     }
   }
 }

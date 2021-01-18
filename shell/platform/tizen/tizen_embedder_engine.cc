@@ -188,7 +188,7 @@ bool TizenEmbedderEngine::RunEngine(
   localization_channel->SendLocales();
   lifecycle_channel = std::make_unique<LifecycleChannel>(flutter_engine);
   platform_view_channel = std::make_unique<PlatformViewChannel>(
-      internal_plugin_registrar_->messenger());
+      internal_plugin_registrar_->messenger(), this);
 
   key_event_handler_ = std::make_unique<KeyEventHandler>(this);
   touch_event_handler_ = std::make_unique<TouchEventHandler>(this);

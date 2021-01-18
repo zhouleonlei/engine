@@ -36,6 +36,8 @@ class TextInputChannel {
     return current_keyboard_geometry_;
   }
 
+  Ecore_IMF_Context* GetImfContext() { return imf_context_; }
+
   int32_t rotation = 0;
 
  private:

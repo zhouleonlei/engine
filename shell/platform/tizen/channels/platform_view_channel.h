@@ -13,11 +13,13 @@
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/method_channel.h"
 #include "rapidjson/document.h"
 
+class TizenEmbedderEngine;
 class PlatformView;
 class PlatformViewFactory;
 class PlatformViewChannel {
  public:
-  explicit PlatformViewChannel(flutter::BinaryMessenger* messenger);
+  explicit PlatformViewChannel(flutter::BinaryMessenger* messenger,
+                               TizenEmbedderEngine* engine);
   virtual ~PlatformViewChannel();
   void Dispose();
   std::map<std::string, std::unique_ptr<PlatformViewFactory>>& ViewFactories() {
@@ -29,6 +31,7 @@ class PlatformViewChannel {
   int CurrentFocusedViewId();
 
  private:
+  TizenEmbedderEngine* engine_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
   std::map<std::string, std::unique_ptr<PlatformViewFactory>> view_factories_;
   std::map<int, PlatformView*> view_instances_;

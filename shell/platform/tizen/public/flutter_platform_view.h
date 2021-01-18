@@ -5,6 +5,7 @@
 #ifndef FLUTTER_SHELL_PLATFORM_TIZEN_PUBLIC_FLUTTER_PLATFORM_VIEW_H_
 #define FLUTTER_SHELL_PLATFORM_TIZEN_PUBLIC_FLUTTER_PLATFORM_VIEW_H_
 
+#include <Ecore_IMF.h>
 #include <Ecore_Input.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -37,6 +38,8 @@ class PlatformView {
   // Key input event
   virtual void DispatchKeyDownEvent(Ecore_Event_Key* key) = 0;
   virtual void DispatchKeyUpEvent(Ecore_Event_Key* key) = 0;
+
+  virtual void SetSoftwareKeyboardContext(Ecore_IMF_Context* context) = 0;
 
  private:
   flutter::PluginRegistrar* registrar_;

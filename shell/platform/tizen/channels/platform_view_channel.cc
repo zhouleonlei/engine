@@ -121,7 +121,7 @@ void PlatformViewChannel::HandleMethodCall(
   const auto method = call.method_name();
   const auto& arguments = *call.arguments();
 
-  FT_LOGD("method: %s", method.c_str());
+  FT_LOGD("PlatformViewChannel method: %s", method.c_str());
   if (method == "create") {
     std::string viewType = ExtractStringFromMap(arguments, "viewType");
     int viewId = ExtractIntFromMap(arguments, "id");
@@ -147,14 +147,8 @@ void PlatformViewChannel::HandleMethodCall(
 
       auto viewInstance =
           it->second->Create(viewId, width, height, byteMessage);
-      viewInstance->SetFocus(true);
       view_instances_.insert(
           std::pair<int, PlatformView*>(viewId, viewInstance));
-
-      if (channel_ != nullptr) {
-        auto id = std::make_unique<flutter::EncodableValue>(viewId);
-        channel_->InvokeMethod("viewFocused", std::move(id));
-      }
 
       if (engine_ && engine_->text_input_channel) {
         Ecore_IMF_Context* context =
@@ -174,6 +168,7 @@ void PlatformViewChannel::HandleMethodCall(
     };
     auto it = view_instances_.find(viewId);
     if (viewId >= 0 && it != view_instances_.end()) {
+      it->second->SetFocus(false);
       it->second->ClearFocus();
       result->Success();
     } else {
@@ -209,6 +204,20 @@ void PlatformViewChannel::HandleMethodCall(
         dy = std::get<double>(event[5]);
 
         it->second->Touch(type, button, x, y, dx, dy);
+
+        if (!it->second->IsFocused()) {
+          auto focuesdView = view_instances_.find(CurrentFocusedViewId());
+          if (focuesdView != view_instances_.end()) {
+            focuesdView->second->SetFocus(false);
+          }
+
+          it->second->SetFocus(true);
+          if (channel_ != nullptr) {
+            auto id = std::make_unique<flutter::EncodableValue>(viewId);
+            channel_->InvokeMethod("viewFocused", std::move(id));
+          }
+        }
+
         result->Success();
       } else if (method == "setDirection") {
         FT_LOGD("PlatformViewChannel setDirection");

@@ -2,6 +2,7 @@
 # Copyright 2013 The Flutter Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import("//flutter/shell/platform/tizen/config.gni")
 
 _public_headers = [ "public/flutter_tizen.h" ]
 
@@ -43,10 +44,8 @@ source_set("flutter_tizen") {
     "key_event_handler.cc",
     "tizen_embedder_engine.cc",
     "tizen_event_loop.cc",
-    "tizen_surface.cc",
-    "tizen_surface_gl.cc",
+    "tizen_renderer.cc",
     "tizen_vsync_waiter.cc",
-    "tizen_native_window.cc",
     "touch_event_handler.cc",
   ]
 
@@ -72,6 +71,7 @@ source_set("flutter_tizen") {
     "$custom_sysroot/usr/include/ecore-imf-1",
     "$custom_sysroot/usr/include/ecore-imf-evas-1",
     "$custom_sysroot/usr/include/ecore-input-1",
+    "$custom_sysroot/usr/include/ecore-wayland-1",
     "$custom_sysroot/usr/include/ecore-wl2-1",
     "$custom_sysroot/usr/include/efl-1",
     "$custom_sysroot/usr/include/eina-1",
@@ -80,6 +80,7 @@ source_set("flutter_tizen") {
     "$custom_sysroot/usr/include/eo-1",
     "$custom_sysroot/usr/include/evas-1",
     "$custom_sysroot/usr/include/system",
+    "$custom_sysroot/usr/include/wayland-extension"
   ]
   
   lib_dirs = [ "$custom_sysroot/usr/lib" ]
@@ -98,7 +99,6 @@ source_set("flutter_tizen") {
     "ecore",
     "ecore_imf",
     "ecore_input",
-    "ecore_wl2",
     "EGL",
     "evas",
     "GLESv2",
@@ -106,6 +106,15 @@ source_set("flutter_tizen") {
     "tdm-client",
     "wayland-client",
   ]
+
+  if (tizen_sdk_4) {
+    sources += [ "tizen_renderer_ecore_wl.cc" ]
+    libs += [ "ecore_wayland", "wayland-egl" ]
+    defines = [ "FLUTTER_TIZEN_4" ]
+  } else {
+    sources += [ "tizen_renderer_ecore_wl2.cc" ]
+    libs += [ "ecore_wl2" ]
+  }
 }
 
 copy("publish_headers_tizen") {

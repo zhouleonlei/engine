@@ -35,10 +35,15 @@ static double GetDeviceDpi() {
 TizenEmbedderEngine::TizenEmbedderEngine(
     const FlutterWindowProperties& window_properties)
     : device_profile(GetDeviceProfile()), device_dpi(GetDeviceDpi()) {
-  tizen_native_window = std::make_shared<TizenNativeWindow>(
+#ifdef FLUTTER_TIZEN_4
+  tizen_renderer = std::make_unique<TizenRendererEcoreWl>(
       window_properties.x, window_properties.y, window_properties.width,
       window_properties.height);
-  tizen_surface = std::make_unique<TizenSurfaceGL>(tizen_native_window);
+#else
+  tizen_renderer = std::make_unique<TizenRendererEcoreWl2>(
+      window_properties.x, window_properties.y, window_properties.width,
+      window_properties.height);
+#endif
 
   // Run flutter task on Tizen main loop.
   // Tizen engine has four threads (GPU thread, UI thread, IO thread, platform
@@ -61,8 +66,7 @@ TizenEmbedderEngine::TizenEmbedderEngine(
 
 TizenEmbedderEngine::~TizenEmbedderEngine() {
   FT_LOGD("Destroy");
-  tizen_surface = nullptr;
-  tizen_native_window = nullptr;
+  tizen_renderer = nullptr;
 }
 
 // Attempts to load AOT data from the given path, which must be absolute and
@@ -92,7 +96,7 @@ UniqueAotDataPtr LoadAotData(std::string aot_data_path) {
 
 bool TizenEmbedderEngine::RunEngine(
     const FlutterEngineProperties& engine_properties) {
-  if (!tizen_surface->IsValid()) {
+  if (!tizen_renderer->IsValid()) {
     FT_LOGE("The display was not valid.");
     return false;
   }
@@ -262,13 +266,13 @@ void TizenEmbedderEngine::SendWindowMetrics(int32_t width, int32_t height,
 // This must be called at least once in order to initialize the value of
 // transformation_.
 void TizenEmbedderEngine::SetWindowOrientation(int32_t degree) {
-  if (!tizen_surface) {
+  if (!tizen_renderer) {
     return;
   }
 
   // Compute renderer transformation based on the angle of rotation.
   double rad = (360 - degree) * M_PI / 180;
-  auto geometry = tizen_native_window->GetGeometry();
+  auto geometry = tizen_renderer->GetGeometry();
   double width = geometry.w;
   double height = geometry.h;
 
@@ -331,11 +335,7 @@ void TizenEmbedderEngine::OnFlutterPlatformMessage(
 void TizenEmbedderEngine::OnVsyncCallback(void* user_data, intptr_t baton) {
   TizenEmbedderEngine* tizen_embedder_engine =
       reinterpret_cast<TizenEmbedderEngine*>(user_data);
-  if (tizen_embedder_engine->tizen_vsync_waiter_->IsValid()) {
-    tizen_embedder_engine->tizen_vsync_waiter_->AsyncWaitForVsync(baton);
-    return;
-  }
-  FT_ASSERT_NOT_REACHED();
+  tizen_embedder_engine->tizen_vsync_waiter_->AsyncWaitForVsync(baton);
 }
 
 // Converts a FlutterPlatformMessage to an equivalent FlutterDesktopMessage.
@@ -352,27 +352,27 @@ FlutterDesktopMessage TizenEmbedderEngine::ConvertToDesktopMessage(
 
 bool TizenEmbedderEngine::MakeContextCurrent(void* user_data) {
   return reinterpret_cast<TizenEmbedderEngine*>(user_data)
-      ->tizen_surface->OnMakeCurrent();
+      ->tizen_renderer->OnMakeCurrent();
 }
 
 bool TizenEmbedderEngine::ClearContext(void* user_data) {
   return reinterpret_cast<TizenEmbedderEngine*>(user_data)
-      ->tizen_surface->OnClearCurrent();
+      ->tizen_renderer->OnClearCurrent();
 }
 
 bool TizenEmbedderEngine::Present(void* user_data) {
   return reinterpret_cast<TizenEmbedderEngine*>(user_data)
-      ->tizen_surface->OnPresent();
+      ->tizen_renderer->OnPresent();
 }
 
 bool TizenEmbedderEngine::MakeResourceCurrent(void* user_data) {
   return reinterpret_cast<TizenEmbedderEngine*>(user_data)
-      ->tizen_surface->OnMakeResourceCurrent();
+      ->tizen_renderer->OnMakeResourceCurrent();
 }
 
 uint32_t TizenEmbedderEngine::GetActiveFbo(void* user_data) {
   return reinterpret_cast<TizenEmbedderEngine*>(user_data)
-      ->tizen_surface->OnGetFBO();
+      ->tizen_renderer->OnGetFBO();
 }
 
 FlutterTransformation TizenEmbedderEngine::Transformation(void* user_data) {
@@ -381,5 +381,5 @@ FlutterTransformation TizenEmbedderEngine::Transformation(void* user_data) {
 
 void* TizenEmbedderEngine::GlProcResolver(void* user_data, const char* name) {
   return reinterpret_cast<TizenEmbedderEngine*>(user_data)
-      ->tizen_surface->OnProcResolver(name);
+      ->tizen_renderer->OnProcResolver(name);
 }

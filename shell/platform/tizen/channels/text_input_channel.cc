@@ -108,13 +108,13 @@ void TextInputChannel::InputPanelStateChangedCallback(
             [](void* data) -> Eina_Bool {
               TextInputChannel* self = (TextInputChannel*)data;
               auto window_geometry =
-                  self->engine_->tizen_native_window->GetGeometry();
+                  self->engine_->tizen_renderer->GetGeometry();
               int32_t surface_w = window_geometry.w;
               int32_t surface_h =
                   window_geometry.h - self->current_keyboard_geometry_.h;
 
-              self->engine_->tizen_native_window->GetTizenNativeEGLWindow()
-                  ->ResizeWithRotation(0, 0, surface_w, surface_h, 0);
+              self->engine_->tizen_renderer->ResizeWithRotation(0, 0, surface_w,
+                                                                surface_h, 0);
               if (self->rotation == 90 || self->rotation == 270) {
                 self->engine_->SendWindowMetrics(surface_h, surface_w, 0);
               } else {
@@ -298,10 +298,8 @@ TextInputChannel::TextInputChannel(flutter::BinaryMessenger* messenger,
     imf_context_ = ecore_imf_context_add(GetImfMethod());
   }
   if (imf_context_) {
-    Ecore_Wl2_Window* ecoreWindow =
-        engine_->tizen_native_window->GetWindowHandle();
     ecore_imf_context_client_window_set(
-        imf_context_, (void*)ecore_wl2_window_id_get(ecoreWindow));
+        imf_context_, (void*)engine_->tizen_renderer->GetEcoreWindowId());
     RegisterIMFCallback();
   } else {
     FT_LOGE("Failed to create imfContext");
@@ -456,7 +454,9 @@ bool TextInputChannel::FilterEvent(Ecore_Event_Key* keyDownEvent) {
       ecore_device_class_get(keyDownEvent->dev));
   ecoreKeyDownEvent.dev_subclass = EoreDeviceSubClassToEcoreIMFDeviceSubClass(
       ecore_device_subclass_get(keyDownEvent->dev));
+#ifndef FLUTTER_TIZEN_4
   ecoreKeyDownEvent.keycode = keyDownEvent->keycode;
+#endif
 
   bool isIME = strcmp(device, "ime") == 0;
   if (isIME && strcmp(keyDownEvent->key, "Select") == 0) {
@@ -612,15 +612,15 @@ void TextInputChannel::HideSoftwareKeyboard() {
 
     if (engine_->device_profile ==
         "mobile") {  // FIXME : Needs improvement on other devices.
-      auto window_geometry = engine_->tizen_native_window->GetGeometry();
+      auto window_geometry = engine_->tizen_renderer->GetGeometry();
 
       if (rotation == 90 || rotation == 270) {
         engine_->SendWindowMetrics(window_geometry.h, window_geometry.w, 0);
       } else {
         engine_->SendWindowMetrics(window_geometry.w, window_geometry.h, 0);
       }
-      engine_->tizen_native_window->GetTizenNativeEGLWindow()
-          ->ResizeWithRotation(0, 0, window_geometry.w, window_geometry.h, 0);
+      engine_->tizen_renderer->ResizeWithRotation(0, 0, window_geometry.w,
+                                                  window_geometry.h, 0);
       ecore_timer_add(
           0.05,
           [](void* data) -> Eina_Bool {

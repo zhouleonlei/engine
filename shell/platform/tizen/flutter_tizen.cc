@@ -6,6 +6,7 @@
 #include "public/flutter_tizen.h"
 
 #include <inttypes.h>
+#include <unistd.h>
 
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/plugin_registrar.h"
 #include "flutter/shell/platform/common/cpp/client_wrapper/include/flutter/standard_message_codec.h"

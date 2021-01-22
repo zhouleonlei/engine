@@ -23,8 +23,12 @@
 #include "flutter/shell/platform/tizen/public/flutter_texture_registrar.h"
 #include "flutter/shell/platform/tizen/public/flutter_tizen.h"
 #include "flutter/shell/platform/tizen/tizen_event_loop.h"
-#include "flutter/shell/platform/tizen/tizen_surface.h"
-#include "flutter/shell/platform/tizen/tizen_surface_gl.h"
+#include "flutter/shell/platform/tizen/tizen_renderer.h"
+#ifdef FLUTTER_TIZEN_4
+#include "flutter/shell/platform/tizen/tizen_renderer_ecore_wl.h"
+#else
+#include "flutter/shell/platform/tizen/tizen_renderer_ecore_wl2.h"
+#endif
 #include "flutter/shell/platform/tizen/tizen_vsync_waiter.h"
 #include "flutter/shell/platform/tizen/touch_event_handler.h"
 
@@ -94,8 +98,7 @@ class TizenEmbedderEngine {
   std::unique_ptr<flutter::IncomingMessageDispatcher> message_dispatcher;
 
   // The interface between the Flutter rasterizer and the platform.
-  std::unique_ptr<TizenSurface> tizen_surface;
-  std::shared_ptr<TizenNativeWindow> tizen_native_window;
+  std::unique_ptr<TizenRenderer> tizen_renderer;
 
   // The system channels for communicating between Flutter and the platform.
   std::unique_ptr<KeyEventChannel> key_event_channel;

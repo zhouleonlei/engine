@@ -221,9 +221,6 @@ void FlutterNotifyLowMemoryWarning(FlutterWindowControllerRef controller) {
 
 void FlutterRotateWindow(FlutterWindowControllerRef controller,
                          int32_t degree) {
-  if (controller->engine) {
-    controller->engine->SetWindowOrientation(degree);
-  }
 }
 
 int64_t FlutterRegisterExternalTexture(

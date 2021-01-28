@@ -12,12 +12,15 @@
 
 class TizenRendererEcoreWl2 : public TizenRenderer {
  public:
-  TizenRendererEcoreWl2(int32_t x, int32_t y, int32_t w, int32_t h);
+  TizenRendererEcoreWl2(TizenRenderer::Delegate &delegate, int32_t x, int32_t y,
+                        int32_t w, int32_t h);
   ~TizenRendererEcoreWl2();
   TizenWindowGeometry GetGeometry() override;
   int GetEcoreWindowId() override;
-  void ResizeWithRotation(int32_t dx, int32_t dy, int32_t width, int32_t height,
-                          int32_t degree) override;
+  void ResizeWithRotation(int32_t x, int32_t y, int32_t width, int32_t height,
+                          int32_t angle) override;
+  void Show() override;
+  void SetRotate(int angle) override;
 
  protected:
   void DestoryEglWindow() override;
@@ -28,10 +31,12 @@ class TizenRendererEcoreWl2 : public TizenRenderer {
   bool SetupEcoreWlWindow(int32_t x, int32_t y, int32_t w, int32_t h) override;
   bool SetupEglWindow(int32_t w, int32_t h) override;
   void ShutdownDisplay() override;
+  void SendRotationChangeDone() override;
 
  private:
   Ecore_Wl2_Display *ecore_wl2_display_ = nullptr;
   Ecore_Wl2_Window *ecore_wl2_window_ = nullptr;
   Ecore_Wl2_Egl_Window *ecore_wl2_egl_window_ = nullptr;
+  static Eina_Bool RotationEventCb(void *data, int type, void *event);
 };
-#endif
+#endif //EMBEDDER_TIZEN_RENDERER_ECORE_WL2_H

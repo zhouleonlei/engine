@@ -102,7 +102,7 @@ void TextInputChannel::InputPanelStateChangedCallback(
     case ECORE_IMF_INPUT_PANEL_STATE_SHOW: {
       FT_LOGD("[PANEL_STATE_SHOW]\n");
       if (self->engine_->device_profile ==
-          "mobile") {  // FIXME : Needs improvement on other devices.
+          "mobileD") {  // FIXME : Needs improvement on other devices.
         ecore_timer_add(
             0.25,
             [](void* data) -> Eina_Bool {
@@ -611,7 +611,7 @@ void TextInputChannel::HideSoftwareKeyboard() {
     is_software_keyboard_showing_ = false;
 
     if (engine_->device_profile ==
-        "mobile") {  // FIXME : Needs improvement on other devices.
+        "mobileD") {  // FIXME : Needs improvement on other devices.
       auto window_geometry = engine_->tizen_renderer->GetGeometry();
 
       if (rotation == 90 || rotation == 270) {

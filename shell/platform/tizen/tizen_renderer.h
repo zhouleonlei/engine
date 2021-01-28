@@ -12,7 +12,13 @@ class TizenRenderer {
   struct TizenWindowGeometry {
     int32_t x{0}, y{0}, w{0}, h{0};
   };
-  TizenRenderer() = default;
+
+  class Delegate {
+   public:
+    virtual void OnRotationChange(int angle) = 0;
+  };
+
+  TizenRenderer(TizenRenderer::Delegate& deleget);
   virtual ~TizenRenderer();
   bool OnMakeCurrent();
   bool OnClearCurrent();
@@ -22,11 +28,15 @@ class TizenRenderer {
   void* OnProcResolver(const char* name);
   virtual TizenWindowGeometry GetGeometry() = 0;
   bool IsValid();
+  virtual void Show() = 0;
+  virtual void SetRotate(int angle) = 0;
   virtual int GetEcoreWindowId() = 0;
-  virtual void ResizeWithRotation(int32_t dx, int32_t dy, int32_t width,
+  virtual void ResizeWithRotation(int32_t x, int32_t y, int32_t width,
                                   int32_t height, int32_t degree) = 0;
 
  protected:
+  bool received_rotation{false};
+  TizenRenderer::Delegate& delegate_;
   bool InitializeRenderer(int32_t x, int32_t y, int32_t w, int32_t h);
   virtual bool SetupDisplay() = 0;
   virtual bool SetupEcoreWlWindow(int32_t x, int32_t y, int32_t w,
@@ -35,12 +45,12 @@ class TizenRenderer {
   bool SetupEglSurface();
   virtual EGLDisplay GetEGLDisplay() = 0;
   virtual EGLNativeWindowType GetEGLNativeWindowType() = 0;
-
   void DestoryRenderer();
   void DestoryEglSurface();
   virtual void DestoryEglWindow() = 0;
   virtual void DestoryEcoreWlWindow() = 0;
   virtual void ShutdownDisplay() = 0;
+  virtual void SendRotationChangeDone() = 0;
 
  private:
   bool is_valid_ = false;
@@ -53,4 +63,4 @@ class TizenRenderer {
   bool ChooseEGLConfiguration();
   void PrintEGLError();
 };
-#endif
+#endif //EMBEDDER_TIZEN_RENDERER_H

@@ -37,11 +37,11 @@ TizenEmbedderEngine::TizenEmbedderEngine(
     : device_profile(GetDeviceProfile()), device_dpi(GetDeviceDpi()) {
 #ifdef FLUTTER_TIZEN_4
   tizen_renderer = std::make_unique<TizenRendererEcoreWl>(
-      window_properties.x, window_properties.y, window_properties.width,
+      *this, window_properties.x, window_properties.y, window_properties.width,
       window_properties.height);
 #else
   tizen_renderer = std::make_unique<TizenRendererEcoreWl2>(
-      window_properties.x, window_properties.y, window_properties.width,
+      *this, window_properties.x, window_properties.y, window_properties.width,
       window_properties.height);
 #endif
 
@@ -198,8 +198,11 @@ bool TizenEmbedderEngine::RunEngine(
   touch_event_handler_ = std::make_unique<TouchEventHandler>(this);
 
   SetWindowOrientation(0);
-
   return true;
+}
+
+void TizenEmbedderEngine::OnRotationChange(int angle) {
+  SetWindowOrientation(angle);
 }
 
 bool TizenEmbedderEngine::StopEngine() {
@@ -270,15 +273,12 @@ void TizenEmbedderEngine::SetWindowOrientation(int32_t degree) {
     return;
   }
 
+  tizen_renderer->SetRotate(degree);
   // Compute renderer transformation based on the angle of rotation.
   double rad = (360 - degree) * M_PI / 180;
   auto geometry = tizen_renderer->GetGeometry();
   double width = geometry.w;
   double height = geometry.h;
-
-  if (text_input_channel->IsSoftwareKeyboardShowing()) {
-    height -= text_input_channel->GetCurrentKeyboardGeometry().h;
-  }
 
   double trans_x = 0.0, trans_y = 0.0;
   if (degree == 90) {
@@ -297,8 +297,12 @@ void TizenEmbedderEngine::SetWindowOrientation(int32_t degree) {
   touch_event_handler_->rotation = degree;
   text_input_channel->rotation = degree;
   if (degree == 90 || degree == 270) {
+    tizen_renderer->ResizeWithRotation(geometry.x, geometry.y, height, width,
+                                       degree);
     SendWindowMetrics(height, width, 0.0);
   } else {
+    tizen_renderer->ResizeWithRotation(geometry.x, geometry.y, width, height,
+                                       degree);
     SendWindowMetrics(width, height, 0.0);
   }
 }

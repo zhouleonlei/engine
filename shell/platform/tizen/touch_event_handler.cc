@@ -43,6 +43,7 @@ void TouchEventHandler::SendFlutterPointerEvent(FlutterPointerPhase phase,
   double width = window_geometry.w;
   double height = window_geometry.h;
   double new_x = x, new_y = y;
+
   if (rotation == 90) {
     new_x = height - y;
     new_y = x;

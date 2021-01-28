@@ -65,7 +65,7 @@ struct FlutterTextureRegistrar {
 using UniqueAotDataPtr = std::unique_ptr<_FlutterEngineAOTData, AOTDataDeleter>;
 
 // Manages state associated with the underlying FlutterEngine.
-class TizenEmbedderEngine {
+class TizenEmbedderEngine : public TizenRenderer::Delegate {
  public:
   explicit TizenEmbedderEngine(
       const FlutterWindowProperties& window_properties);
@@ -87,6 +87,7 @@ class TizenEmbedderEngine {
   void AppIsResumed();
   void AppIsPaused();
   void AppIsDetached();
+  void OnRotationChange(int degree) override;
 
   // The Flutter engine instance.
   FLUTTER_API_SYMBOL(FlutterEngine) flutter_engine;

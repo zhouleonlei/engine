@@ -9,6 +9,9 @@
 
 #include "flutter/shell/platform/tizen/tizen_log.h"
 
+TizenRenderer::TizenRenderer(TizenRenderer::Delegate& delegate)
+    : delegate_(delegate) {}
+
 TizenRenderer::~TizenRenderer() = default;
 
 bool TizenRenderer::OnMakeCurrent() {
@@ -58,6 +61,12 @@ bool TizenRenderer::OnPresent() {
     FT_LOGE("Invalid TizenRenderer");
     return false;
   }
+
+  if(received_rotation) {
+    SendRotationChangeDone();
+    received_rotation = false;
+  }
+
   if (eglSwapBuffers(egl_display_, egl_surface_) != EGL_TRUE) {
     FT_LOGE("Could not swap EGl buffer");
     PrintEGLError();
@@ -217,6 +226,7 @@ bool TizenRenderer::InitializeRenderer(int32_t x, int32_t y, int32_t w,
     FT_LOGE("setupEglSurface fail");
     return false;
   }
+  Show();
   is_valid_ = true;
   return true;
 }

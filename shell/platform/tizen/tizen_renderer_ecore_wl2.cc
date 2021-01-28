@@ -6,10 +6,13 @@
 
 #include "flutter/shell/platform/tizen/tizen_log.h"
 
-TizenRendererEcoreWl2::TizenRendererEcoreWl2(int32_t x, int32_t y, int32_t w,
-                                             int32_t h) {
+TizenRendererEcoreWl2::TizenRendererEcoreWl2(TizenRenderer::Delegate &delegate,
+                                             int32_t x, int32_t y, int32_t w,
+                                             int32_t h)
+    : TizenRenderer(delegate) {
   InitializeRenderer(x, y, w, h);
 }
+
 TizenRendererEcoreWl2::~TizenRendererEcoreWl2() { DestoryRenderer(); }
 bool TizenRendererEcoreWl2::SetupDisplay() {
   if (!ecore_wl2_init()) {
@@ -36,15 +39,50 @@ bool TizenRendererEcoreWl2::SetupEcoreWlWindow(int32_t x, int32_t y, int32_t w,
       ecore_wl2_window_new(ecore_wl2_display_, nullptr, x, y, w, h);
   ecore_wl2_window_type_set(ecore_wl2_window_, ECORE_WL2_WINDOW_TYPE_TOPLEVEL);
   ecore_wl2_window_alpha_set(ecore_wl2_window_, EINA_FALSE);
+  ecore_wl2_window_position_set(ecore_wl2_window_, x, y);
   ecore_wl2_window_aux_hint_add(ecore_wl2_window_, 0,
                                 "wm.policy.win.user.geometry", "1");
-  ecore_wl2_window_show(ecore_wl2_window_);
+  int rotations[4] = {0, 90, 180, 270};
+  ecore_wl2_window_available_rotations_set(ecore_wl2_window_, rotations,
+                                           sizeof(rotations) / sizeof(int));
+  ecore_event_handler_add(ECORE_WL2_EVENT_WINDOW_ROTATE, RotationEventCb, this);
   return true;
+}
+
+Eina_Bool TizenRendererEcoreWl2::RotationEventCb(void *data, int type,
+                                                 void *event) {
+  auto *self = reinterpret_cast<TizenRendererEcoreWl2 *>(data);
+  Ecore_Wl2_Event_Window_Rotation *ev =
+      reinterpret_cast<Ecore_Wl2_Event_Window_Rotation *>(event);
+  self->delegate_.OnRotationChange(ev->angle);
+  return ECORE_CALLBACK_PASS_ON;
+}
+
+void TizenRendererEcoreWl2::Show() { ecore_wl2_window_show(ecore_wl2_window_); }
+
+void TizenRendererEcoreWl2::SetRotate(int angle) {
+  ecore_wl2_window_rotation_set(ecore_wl2_window_, angle);
+  received_rotation = true;
+}
+
+void TizenRendererEcoreWl2::ResizeWithRotation(int32_t x, int32_t y,
+                                               int32_t width, int32_t height,
+                                               int32_t angle) {
+  ecore_wl2_egl_window_resize_with_rotation(ecore_wl2_egl_window_, x, y, width,
+                                            height, angle);
+}
+
+void TizenRendererEcoreWl2::SendRotationChangeDone() {
+  int x, y, w, h;
+  ecore_wl2_window_geometry_get(ecore_wl2_window_, &x, &y, &w, &h);
+  ecore_wl2_window_rotation_change_done_send(
+      ecore_wl2_window_, ecore_wl2_window_rotation_get(ecore_wl2_window_), w,
+      h);
 }
 
 bool TizenRendererEcoreWl2::SetupEglWindow(int32_t w, int32_t h) {
   ecore_wl2_egl_window_ = ecore_wl2_egl_window_create(ecore_wl2_window_, w, h);
-  return true;
+  return ecore_wl2_egl_window_ != nullptr;
 }
 
 EGLDisplay TizenRendererEcoreWl2::GetEGLDisplay() {
@@ -70,6 +108,7 @@ void TizenRendererEcoreWl2::DestoryEcoreWlWindow() {
     ecore_wl2_window_ = nullptr;
   }
 }
+
 void TizenRendererEcoreWl2::ShutdownDisplay() {
   if (ecore_wl2_display_) {
     ecore_wl2_display_disconnect(ecore_wl2_display_);
@@ -87,11 +126,4 @@ TizenRenderer::TizenWindowGeometry TizenRendererEcoreWl2::GetGeometry() {
 
 int TizenRendererEcoreWl2::GetEcoreWindowId() {
   return ecore_wl2_window_id_get(ecore_wl2_window_);
-}
-
-void TizenRendererEcoreWl2::ResizeWithRotation(int32_t dx, int32_t dy,
-                                               int32_t width, int32_t height,
-                                               int32_t degree) {
-  ecore_wl2_egl_window_resize_with_rotation(ecore_wl2_egl_window_, dx, dy,
-                                            width, height, degree);
 }

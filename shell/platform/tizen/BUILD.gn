@@ -4,20 +4,26 @@
 # found in the LICENSE file.
 import("//flutter/shell/platform/tizen/config.gni")
 
-_public_headers = [ "public/flutter_tizen.h" ]
-
-# Any files that are built by clients (client_wrapper code, library headers for
-# implementations using this shared code, etc.) include the public headers
-# assuming they are in the include path. This configuration should be added to
-# any such code that is also built by GN to make the includes work.
-config("relative_flutter_tizen_headers") {
-  include_dirs = [ "public" ]
+group("tizen") {
+  deps = [ ":flutter_tizen_library" ]
 }
 
-# The headers are a separate source set since the client wrapper is allowed
-# to depend on the public headers, but none of the rest of the code.
+shared_library("flutter_tizen_library") {
+  output_name = "flutter_tizen"
+
+  ldflags = [ "-Wl,-rpath,\$ORIGIN" ]
+
+  deps = [ ":flutter_tizen" ]
+
+  public_configs = [ "//flutter:config" ]
+}
+
 source_set("flutter_tizen_headers") {
-  public = _public_headers
+  public = [
+    "public/flutter_platform_view.h",
+    "public/flutter_texture_registrar.h",
+    "public/flutter_tizen.h",
+  ]
 
   public_deps =
       [ "//flutter/shell/platform/common/cpp:common_cpp_library_headers" ]
@@ -57,7 +63,7 @@ source_set("flutter_tizen") {
     "//flutter/shell/platform/common/cpp:common_cpp",
     "//flutter/shell/platform/common/cpp:common_cpp_input",
     "//flutter/shell/platform/common/cpp/client_wrapper:client_wrapper",
-    "//flutter/shell/platform/embedder:embedder_as_internal_library",
+    "//flutter/shell/platform/embedder:flutter_engine",
     "//third_party/rapidjson",
   ]
 
@@ -83,7 +89,7 @@ source_set("flutter_tizen") {
     "$custom_sysroot/usr/include/wayland-extension"
   ]
   
-  lib_dirs = [ "$custom_sysroot/usr/lib" ]
+  lib_dirs = [ root_out_dir, "$custom_sysroot/usr/lib" ]
 
   cflags_cc = [
     "-Wno-newline-eof",
@@ -101,6 +107,7 @@ source_set("flutter_tizen") {
     "ecore_input",
     "EGL",
     "evas",
+    "flutter_engine",
     "GLESv2",
     "tbm",
     "tdm-client",
@@ -115,12 +122,4 @@ source_set("flutter_tizen") {
     sources += [ "tizen_renderer_ecore_wl2.cc" ]
     libs += [ "ecore_wl2" ]
   }
-}
-
-copy("publish_headers_tizen") {
-  sources = _public_headers
-  outputs = [ "$root_out_dir/{{source_file_part}}" ]
-
-  # The Tizen header assumes the presence of the common headers.
-  deps = [ "//flutter/shell/platform/common/cpp:publish_headers" ]
 }

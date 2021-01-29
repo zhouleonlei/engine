@@ -15,6 +15,10 @@ jobs:
         arch: arm
         mode: release
         targetTriple: armv7l-tizen-linux-gnueabi
+      tizen-arm-profile:
+        arch: arm
+        mode: profile
+        targetTriple: armv7l-tizen-linux-gnueabi
       tizen-arm-debug:
         arch: arm
         mode: debug
@@ -118,10 +122,12 @@ jobs:
       mv $(Pipeline.Workspace)/tizen-* .
       mv tizen-arm-release/icudtl.dat common
       for platform in linux windows darwin; do
-        curl -o tmp.zip https://storage.googleapis.com/flutter_infra/flutter/$(upstreamVersion)/android-arm-release/$platform-x64.zip 2> /dev/null
-        unzip tmp.zip -d tizen-arm-release/$platform-x64 && rm tmp.zip
+        for mode in release profile; do
+          curl -o tmp.zip https://storage.googleapis.com/flutter_infra/flutter/$(upstreamVersion)/android-arm-$mode/$platform-x64.zip 2> /dev/null
+          unzip tmp.zip -d tizen-arm-$mode/$platform-x64 && rm tmp.zip
+        done
         zip -r $(Build.StagingDirectory)/$platform-x64.zip *
-        rm -r tizen-arm-release/$platform-x64
+        rm -r tizen-arm-*/$platform-x64
       done
     displayName: Create releases
     workingDirectory: $(Build.BinariesDirectory)

@@ -147,16 +147,19 @@ void PlatformViewChannel::HandleMethodCall(
 
       auto viewInstance =
           it->second->Create(viewId, width, height, byteMessage);
-      view_instances_.insert(
-          std::pair<int, PlatformView*>(viewId, viewInstance));
+      if (viewInstance) {
+        view_instances_.insert(
+            std::pair<int, PlatformView*>(viewId, viewInstance));
 
-      if (engine_ && engine_->text_input_channel) {
-        Ecore_IMF_Context* context =
-            engine_->text_input_channel->GetImfContext();
-        viewInstance->SetSoftwareKeyboardContext(context);
+        if (engine_ && engine_->text_input_channel) {
+          Ecore_IMF_Context* context =
+              engine_->text_input_channel->GetImfContext();
+          viewInstance->SetSoftwareKeyboardContext(context);
+        }
+        result->Success(flutter::EncodableValue(viewInstance->GetTextureId()));
+      } else {
+        result->Error("Can't create a webview instance!!");
       }
-
-      result->Success(flutter::EncodableValue(viewInstance->GetTextureId()));
     } else {
       FT_LOGE("can't find view type = %s", viewType.c_str());
       result->Error("Can't find view type");

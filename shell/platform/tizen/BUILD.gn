@@ -105,6 +105,7 @@ source_set("flutter_tizen") {
     "ecore",
     "ecore_imf",
     "ecore_input",
+    "eina",
     "EGL",
     "evas",
     "flutter_engine",

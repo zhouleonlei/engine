@@ -4,8 +4,13 @@
 
 #include "tizen_renderer.h"
 
+#ifndef FLUTTER_TIZEN_EVASGL
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#else
+Evas_GL* kEvasGl = nullptr;
+Evas_GL_API* kEvasGLApi = nullptr;
+#endif
 
 #include "flutter/shell/platform/tizen/tizen_log.h"
 
@@ -13,6 +18,8 @@ TizenRenderer::TizenRenderer(TizenRenderer::Delegate& delegate)
     : delegate_(delegate) {}
 
 TizenRenderer::~TizenRenderer() = default;
+
+#ifndef FLUTTER_TIZEN_EVASGL
 
 bool TizenRenderer::OnMakeCurrent() {
   if (!IsValid()) {
@@ -458,3 +465,259 @@ void TizenRenderer::DestoryEglSurface() {
     egl_display_ = EGL_NO_DISPLAY;
   }
 }
+#else
+
+bool TizenRenderer::OnMakeCurrent() {
+  if (!IsValid()) {
+    FT_LOGE("Invalid TizenRenderer");
+    return false;
+  }
+  if (evas_gl_make_current(evas_gl_, gl_surface_, gl_context_) != EINA_TRUE) {
+    return false;
+  }
+  evas_object_image_pixels_dirty_set((Evas_Object*)GetImageHandle(),EINA_TRUE);
+  return true;
+}
+
+bool TizenRenderer::OnClearCurrent() {
+  if (!IsValid()) {
+    FT_LOGE("Invalid TizenRenderer");
+    return false;
+  }
+  if (evas_gl_make_current(evas_gl_, NULL, NULL) != EINA_TRUE) {
+    return false;
+  }
+  return true;
+}
+
+bool TizenRenderer::OnMakeResourceCurrent() {
+  if (!IsValid()) {
+    FT_LOGE("Invalid TizenRenderer");
+    return false;
+  }
+  if (evas_gl_make_current(evas_gl_, gl_resource_surface_,
+                           gl_resource_context_) != EINA_TRUE) {
+    return false;
+  }
+  return true;
+}
+
+bool TizenRenderer::OnPresent() {
+  if (!is_valid_) {
+    FT_LOGE("Invalid TizenRenderer");
+    return false;
+  }
+  if (received_rotation) {
+    SendRotationChangeDone();
+    received_rotation = false;
+  }
+  return true;
+}
+
+uint32_t TizenRenderer::OnGetFBO() {
+  if (!is_valid_) {
+    FT_LOGE("Invalid TizenRenderer");
+    return 999;
+  }
+  FT_LOGD("OnGetFBO");
+  return 0;
+}
+
+#define GL_FUNC(FunctionName)                                   \
+  else if (strcmp(name, #FunctionName) == 0) {                  \
+    return reinterpret_cast<void*>(evas_glGlapi->FunctionName); \
+  }
+void* TizenRenderer::OnProcResolver(const char* name) {
+  auto address =
+      evas_gl_proc_address_get(evas_gl_, name);
+  if (address != nullptr) {
+    return reinterpret_cast<void*>(address);
+  }
+  GL_FUNC(glActiveTexture)
+  GL_FUNC(glAttachShader)
+  GL_FUNC(glBindAttribLocation)
+  GL_FUNC(glBindBuffer)
+  GL_FUNC(glBindFramebuffer)
+  GL_FUNC(glBindRenderbuffer)
+  GL_FUNC(glBindTexture)
+  GL_FUNC(glBlendColor)
+  GL_FUNC(glBlendEquation)
+  GL_FUNC(glBlendFunc)
+  GL_FUNC(glBufferData)
+  GL_FUNC(glBufferSubData)
+  GL_FUNC(glCheckFramebufferStatus)
+  GL_FUNC(glClear)
+  GL_FUNC(glClearColor)
+  GL_FUNC(glClearStencil)
+  GL_FUNC(glColorMask)
+  GL_FUNC(glCompileShader)
+  GL_FUNC(glCompressedTexImage2D)
+  GL_FUNC(glCompressedTexSubImage2D)
+  GL_FUNC(glCopyTexSubImage2D)
+  GL_FUNC(glCreateProgram)
+  GL_FUNC(glCreateShader)
+  GL_FUNC(glCullFace)
+  GL_FUNC(glDeleteBuffers)
+  GL_FUNC(glDeleteFramebuffers)
+  GL_FUNC(glDeleteProgram)
+  GL_FUNC(glDeleteRenderbuffers)
+  GL_FUNC(glDeleteShader)
+  GL_FUNC(glDeleteTextures)
+  GL_FUNC(glDepthMask)
+  GL_FUNC(glDisable)
+  GL_FUNC(glDisableVertexAttribArray)
+  GL_FUNC(glDrawArrays)
+  GL_FUNC(glDrawElements)
+  GL_FUNC(glEnable)
+  GL_FUNC(glEnableVertexAttribArray)
+  GL_FUNC(glFinish)
+  GL_FUNC(glFlush)
+  GL_FUNC(glFramebufferRenderbuffer)
+  GL_FUNC(glFramebufferTexture2D)
+  GL_FUNC(glFrontFace)
+  GL_FUNC(glGenBuffers)
+  GL_FUNC(glGenerateMipmap)
+  GL_FUNC(glGenFramebuffers)
+  GL_FUNC(glGenRenderbuffers)
+  GL_FUNC(glGenTextures)
+  GL_FUNC(glGetBufferParameteriv)
+  GL_FUNC(glGetError)
+  GL_FUNC(glGetFramebufferAttachmentParameteriv)
+  GL_FUNC(glGetIntegerv)
+  GL_FUNC(glGetProgramInfoLog)
+  GL_FUNC(glGetProgramiv)
+  GL_FUNC(glGetRenderbufferParameteriv)
+  GL_FUNC(glGetShaderInfoLog)
+  GL_FUNC(glGetShaderiv)
+  GL_FUNC(glGetShaderPrecisionFormat)
+  GL_FUNC(glGetString)
+  GL_FUNC(glGetUniformLocation)
+  GL_FUNC(glIsTexture)
+  GL_FUNC(glLineWidth)
+  GL_FUNC(glLinkProgram)
+  GL_FUNC(glPixelStorei)
+  GL_FUNC(glReadPixels)
+  GL_FUNC(glRenderbufferStorage)
+  GL_FUNC(glScissor)
+  GL_FUNC(glShaderSource)
+  GL_FUNC(glStencilFunc)
+  GL_FUNC(glStencilFuncSeparate)
+  GL_FUNC(glStencilMask)
+  GL_FUNC(glStencilMaskSeparate)
+  GL_FUNC(glStencilOp)
+  GL_FUNC(glStencilOpSeparate)
+  GL_FUNC(glTexImage2D)
+  GL_FUNC(glTexParameterf)
+  GL_FUNC(glTexParameterfv)
+  GL_FUNC(glTexParameteri)
+  GL_FUNC(glTexParameteriv)
+  GL_FUNC(glTexSubImage2D)
+  GL_FUNC(glUniform1f)
+  GL_FUNC(glUniform1fv)
+  GL_FUNC(glUniform1i)
+  GL_FUNC(glUniform1iv)
+  GL_FUNC(glUniform2f)
+  GL_FUNC(glUniform2fv)
+  GL_FUNC(glUniform2i)
+  GL_FUNC(glUniform2iv)
+  GL_FUNC(glUniform3f)
+  GL_FUNC(glUniform3fv)
+  GL_FUNC(glUniform3i)
+  GL_FUNC(glUniform3iv)
+  GL_FUNC(glUniform4f)
+  GL_FUNC(glUniform4fv)
+  GL_FUNC(glUniform4i)
+  GL_FUNC(glUniform4iv)
+  GL_FUNC(glUniformMatrix2fv)
+  GL_FUNC(glUniformMatrix3fv)
+  GL_FUNC(glUniformMatrix4fv)
+  GL_FUNC(glUseProgram)
+  GL_FUNC(glVertexAttrib1f)
+  GL_FUNC(glVertexAttrib2fv)
+  GL_FUNC(glVertexAttrib3fv)
+  GL_FUNC(glVertexAttrib4fv)
+  GL_FUNC(glVertexAttribPointer)
+  GL_FUNC(glViewport)
+  GL_FUNC(glGetStringi)
+  FT_LOGD("Could not resolve: %s", name);
+  return nullptr;
+}
+#undef GL_FUNC
+
+bool TizenRenderer::InitializeRenderer(int32_t x, int32_t y, int32_t w,
+                                       int32_t h) {
+  if (!SetupEvasGL(x,y,w, h)) {
+    FT_LOGE("SetupEvasGL fail");
+    return false;
+  }
+  Show();
+  is_valid_ = true;
+  return true;
+}
+
+bool TizenRenderer::IsValid() { return is_valid_; }
+
+bool TizenRenderer::SetupEvasGL(int32_t x, int32_t y, int32_t w, int32_t h) {
+
+  evas_gl_ = evas_gl_new(evas_object_evas_get((Evas_Object*)SetupEvasWindow(x, y, w, h)));
+  
+  if(!evas_gl_){
+    FT_LOGE("SetupEvasWindow fail");
+    return false;
+  }
+
+  evas_glGlapi = evas_gl_api_get(evas_gl_);
+  kEvasGl = evas_gl_;
+  kEvasGLApi = evas_glGlapi;
+
+  gl_config_ = evas_gl_config_new();
+  gl_config_->color_format = EVAS_GL_RGBA_8888;
+  gl_config_->depth_bits = EVAS_GL_DEPTH_BIT_24;
+  gl_config_->stencil_bits = EVAS_GL_STENCIL_NONE;
+  gl_config_->options_bits = EVAS_GL_OPTIONS_NONE;
+
+#define EVAS_GL_OPTIONS_DIRECT_MEMORY_OPTIMIZE (1 << 12)
+#define EVAS_GL_OPTIONS_DIRECT_OVERRIDE (1 << 13)
+  // gl_config_->options_bits = (Evas_GL_Options_Bits)(
+  //     EVAS_GL_OPTIONS_DIRECT | EVAS_GL_OPTIONS_DIRECT_OVERRIDE |
+  //     EVAS_GL_OPTIONS_DIRECT_MEMORY_OPTIMIZE |
+  //     EVAS_GL_OPTIONS_CLIENT_SIDE_ROTATION);
+
+  gl_context_ =
+      evas_gl_context_version_create(evas_gl_, NULL, EVAS_GL_GLES_2_X);
+  gl_resource_context_ =
+      evas_gl_context_version_create(evas_gl_, NULL, EVAS_GL_GLES_2_X);
+
+  gl_surface_ = evas_gl_surface_create(evas_gl_, gl_config_, w, h);
+
+  gl_resource_surface_ =
+      evas_gl_pbuffer_surface_create(evas_gl_, gl_config_, w, h, NULL);
+
+  Evas_Native_Surface ns;
+  evas_gl_native_surface_get(evas_gl_, gl_surface_, &ns);
+  evas_object_image_native_surface_set((Evas_Object*)GetImageHandle(),
+                                       &ns);
+  pixelDirtyCallback_ = [](void* data, Evas_Object* o) {
+  };
+  evas_object_image_pixels_get_callback_set(
+      (Evas_Object*)GetImageHandle(), pixelDirtyCallback_, NULL);
+  return true;
+}
+
+void TizenRenderer::DestoryRenderer() {
+  DestoryEvasGL();
+  DestoryEvasWindow();
+}
+
+void TizenRenderer::DestoryEvasGL() {
+  evas_gl_surface_destroy(evas_gl_,gl_surface_);
+  evas_gl_surface_destroy(evas_gl_,gl_resource_surface_);
+
+  evas_gl_context_destroy(evas_gl_, gl_context_);
+  evas_gl_context_destroy(evas_gl_, gl_resource_context_);
+
+  evas_gl_config_free(gl_config_);
+  evas_gl_free(evas_gl_);
+}
+
+#endif

@@ -183,61 +183,6 @@ Ecore_IMF_Keyboard_Locks EcoreInputModifierToEcoreIMFLock(
   return static_cast<Ecore_IMF_Keyboard_Locks>(lock);
 }
 
-Ecore_IMF_Device_Class EoreDeviceClassToEcoreIMFDeviceClass(
-    Ecore_Device_Class ecoreDeviceClass) {
-  switch (ecoreDeviceClass) {
-    case ECORE_DEVICE_CLASS_SEAT:
-      return ECORE_IMF_DEVICE_CLASS_SEAT;
-    case ECORE_DEVICE_CLASS_KEYBOARD:
-      return ECORE_IMF_DEVICE_CLASS_KEYBOARD;
-    case ECORE_DEVICE_CLASS_MOUSE:
-      return ECORE_IMF_DEVICE_CLASS_MOUSE;
-    case ECORE_DEVICE_CLASS_TOUCH:
-      return ECORE_IMF_DEVICE_CLASS_TOUCH;
-    case ECORE_DEVICE_CLASS_PEN:
-      return ECORE_IMF_DEVICE_CLASS_PEN;
-    case ECORE_DEVICE_CLASS_POINTER:
-      return ECORE_IMF_DEVICE_CLASS_POINTER;
-    case ECORE_DEVICE_CLASS_GAMEPAD:
-      return ECORE_IMF_DEVICE_CLASS_GAMEPAD;
-    case ECORE_DEVICE_CLASS_NONE:
-    default:
-      return ECORE_IMF_DEVICE_CLASS_NONE;
-  }
-}
-
-Ecore_IMF_Device_Subclass EoreDeviceSubClassToEcoreIMFDeviceSubClass(
-    Ecore_Device_Subclass ecoreDeviceSubclass) {
-  switch (ecoreDeviceSubclass) {
-    case ECORE_DEVICE_SUBCLASS_FINGER:
-      return ECORE_IMF_DEVICE_SUBCLASS_FINGER;
-    case ECORE_DEVICE_SUBCLASS_FINGERNAIL:
-      return ECORE_IMF_DEVICE_SUBCLASS_FINGERNAIL;
-    case ECORE_DEVICE_SUBCLASS_KNUCKLE:
-      return ECORE_IMF_DEVICE_SUBCLASS_KNUCKLE;
-    case ECORE_DEVICE_SUBCLASS_PALM:
-      return ECORE_IMF_DEVICE_SUBCLASS_PALM;
-    case ECORE_DEVICE_SUBCLASS_HAND_SIZE:
-      return ECORE_IMF_DEVICE_SUBCLASS_HAND_SIZE;
-    case ECORE_DEVICE_SUBCLASS_HAND_FLAT:
-      return ECORE_IMF_DEVICE_SUBCLASS_HAND_FLAT;
-    case ECORE_DEVICE_SUBCLASS_PEN_TIP:
-      return ECORE_IMF_DEVICE_SUBCLASS_PEN_TIP;
-    case ECORE_DEVICE_SUBCLASS_TRACKPAD:
-      return ECORE_IMF_DEVICE_SUBCLASS_TRACKPAD;
-    case ECORE_DEVICE_SUBCLASS_TRACKPOINT:
-      return ECORE_IMF_DEVICE_SUBCLASS_TRACKPOINT;
-    case ECORE_DEVICE_SUBCLASS_TRACKBALL:
-      return ECORE_IMF_DEVICE_SUBCLASS_TRACKBALL;
-    case ECORE_DEVICE_SUBCLASS_REMOCON:
-    case ECORE_DEVICE_SUBCLASS_VIRTUAL_KEYBOARD:
-      // FT_LOGW("There is no corresponding type");
-    case ECORE_DEVICE_SUBCLASS_NONE:
-    default:
-      return ECORE_IMF_DEVICE_SUBCLASS_NONE;
-  }
-}
-
 TextInputChannel::TextInputChannel(flutter::BinaryMessenger* messenger,
                                    TizenEmbedderEngine* engine)
     : channel_(std::make_unique<flutter::MethodChannel<rapidjson::Document>>(
@@ -397,8 +342,8 @@ void TextInputChannel::SendStateUpdate(const flutter::TextInputModel& model) {
 
 bool TextInputChannel::FilterEvent(Ecore_Event_Key* keyDownEvent) {
   bool handled = false;
-  const char* device = ecore_device_name_get(keyDownEvent->dev);
-
+  bool isIME = ecore_imf_context_keyboard_mode_get(imf_context_) ==
+               ECORE_IMF_INPUT_PANEL_SW_KEYBOARD_MODE;
   Ecore_IMF_Event_Key_Down ecoreKeyDownEvent;
   ecoreKeyDownEvent.keyname = keyDownEvent->keyname;
   ecoreKeyDownEvent.key = keyDownEvent->key;
@@ -409,16 +354,14 @@ bool TextInputChannel::FilterEvent(Ecore_Event_Key* keyDownEvent) {
       EcoreInputModifierToEcoreIMFModifier(keyDownEvent->modifiers);
   ecoreKeyDownEvent.locks =
       EcoreInputModifierToEcoreIMFLock(keyDownEvent->modifiers);
-  ecoreKeyDownEvent.dev_name = device;
-  ecoreKeyDownEvent.dev_class = EoreDeviceClassToEcoreIMFDeviceClass(
-      ecore_device_class_get(keyDownEvent->dev));
-  ecoreKeyDownEvent.dev_subclass = EoreDeviceSubClassToEcoreIMFDeviceSubClass(
-      ecore_device_subclass_get(keyDownEvent->dev));
+  if (isIME) {
+    ecoreKeyDownEvent.dev_name = "ime";
+  } else {
+    ecoreKeyDownEvent.dev_name = "";
+  }
 #ifndef FLUTTER_TIZEN_4
   ecoreKeyDownEvent.keycode = keyDownEvent->keycode;
 #endif
-
-  bool isIME = strcmp(device, "ime") == 0;
 
   if (isIME && strcmp(keyDownEvent->key, "Select") == 0) {
     if (engine_->device_profile == DeviceProfile::kWearable) {

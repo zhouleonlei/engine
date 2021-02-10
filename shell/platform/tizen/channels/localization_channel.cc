@@ -25,7 +25,7 @@ void LocalizationChannel::SendLocales() {
   FlutterLocale* flutter_locale = nullptr;
   std::vector<FlutterLocale*> flutter_locales;
 
-  int ret = i18n_ulocale_set_default(getenv("LC_TIME"));
+  int ret = i18n_ulocale_set_default(getenv("LANG"));
   ret = i18n_ulocale_get_default(&defualt_locale);
   if (ret != I18N_ERROR_NONE) {
     FT_LOGE("i18n_ulocale_get_default() failed.");

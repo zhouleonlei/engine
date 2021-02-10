@@ -53,6 +53,7 @@ jobs:
         --target-sysroot `pwd`/tizen_tools/sysroot/$(arch) \
         --target-triple $(targetTriple) \
         --runtime-mode $(mode) \
+        --enable-fontconfig \
         --embedder-for-target \
         --disable-desktop-embeddings \
         --build-tizen-shell \
@@ -69,6 +70,7 @@ jobs:
         --target-sysroot `pwd`/tizen_tools/sysroot/$(arch)_40 \
         --target-triple $(targetTriple) \
         --runtime-mode $(mode) \
+        --enable-fontconfig \
         --embedder-for-target \
         --disable-desktop-embeddings \
         --build-tizen-shell \
@@ -83,9 +85,6 @@ jobs:
       cp default/out/linux_$(mode)_$(arch)/libflutter_tizen.so $OUTDIR
       cp tizen40/out/linux_$(mode)_$(arch)/libflutter_tizen.so $OUTDIR/libflutter_tizen40.so
       cp tizen40/out/linux_$(mode)_$(arch)/libflutter_engine.so $OUTDIR
-      if [ "$(System.JobName)" = "tizen-arm-release" ]; then
-        cp default/out/linux_$(mode)_$(arch)/icudtl.dat $OUTDIR
-      fi
     displayName: Copy artifacts
     workingDirectory: $(buildroot)/output
     failOnStderr: true
@@ -115,12 +114,12 @@ jobs:
       cp -r $ROOT/common/cpp/client_wrapper/include common/client_wrapper
       cp $ROOT/tizen/public/*.h common/public
       cp $ROOT/tizen/LICENSE .
-    displayName: Copy peripherals
+    displayName: Copy headers
     workingDirectory: $(Build.BinariesDirectory)
     failOnStderr: true
   - bash: |
+      cp $(Pipeline.Workspace)/src/third_party/icu/flutter/icudtl.dat common
       mv $(Pipeline.Workspace)/tizen-* .
-      mv tizen-arm-release/icudtl.dat common
       for platform in linux windows darwin; do
         for mode in release profile; do
           curl -o tmp.zip https://storage.googleapis.com/flutter_infra/flutter/$(upstreamVersion)/android-arm-$mode/$platform-x64.zip 2> /dev/null

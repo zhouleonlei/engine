@@ -6,6 +6,7 @@ import("//build/fuchsia/sdk.gni")
 import("//flutter/common/config.gni")
 import("//flutter/shell/gpu/gpu.gni")
 import("//flutter/testing/testing.gni")
+import("//flutter/shell/platform/tizen/config.gni")
 
 # Template to generate a dart embedder resource.cc file.
 # Required invoker inputs:
@@ -118,6 +119,10 @@ source_set("common") {
     "//third_party/dart/runtime:dart_api",
     "//third_party/skia",
   ]
+
+  if (build_tizen_shell) {
+   defines = [ "FLUTTER_TIZEN_SHELL" ]
+  }
 }
 
 template("shell_host_executable") {

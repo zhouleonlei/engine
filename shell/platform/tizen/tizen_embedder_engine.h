@@ -24,10 +24,14 @@
 #include "flutter/shell/platform/tizen/public/flutter_tizen_texture_registrar.h"
 #include "flutter/shell/platform/tizen/tizen_event_loop.h"
 #include "flutter/shell/platform/tizen/tizen_renderer.h"
+#ifndef FLUTTER_TIZEN_EVASGL
 #ifdef FLUTTER_TIZEN_4
 #include "flutter/shell/platform/tizen/tizen_renderer_ecore_wl.h"
 #else
 #include "flutter/shell/platform/tizen/tizen_renderer_ecore_wl2.h"
+#endif
+#else
+#include "flutter/shell/platform/tizen/tizen_renderer_evas_gl.h"
 #endif
 #include "flutter/shell/platform/tizen/tizen_vsync_waiter.h"
 #include "flutter/shell/platform/tizen/touch_event_handler.h"
@@ -150,8 +154,8 @@ class TizenEmbedderEngine : public TizenRenderer::Delegate {
   std::unique_ptr<flutter::PluginRegistrar> internal_plugin_registrar_;
 
   // The event loop for the main thread that allows for delayed task execution.
-  std::unique_ptr<TizenEventLoop> event_loop_;
-
+  std::unique_ptr<TizenPlatformEventLoop> event_loop_;
+  std::unique_ptr<TizenRenderEventLoop> render_loop_;
   // The vsync waiter for the embedder.
   std::unique_ptr<TizenVsyncWaiter> tizen_vsync_waiter_;
 

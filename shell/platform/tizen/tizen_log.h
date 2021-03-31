@@ -21,7 +21,7 @@ void StartLogging();
 
 #undef __LOG
 #define __LOG(id, prio, tag, fmt, arg...)                              \
-  __dlog_print(id, prio, tag, "%s: %s(%d) > " fmt, __FILE__, __func__, \
+  __dlog_print(id, prio, tag, "%s: %s(%d) > " fmt, __MODULE__, __func__, \
                __LINE__, ##arg);
 
 #define __FT_LOG(prio, fmt, args...) \

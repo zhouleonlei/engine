@@ -282,7 +282,7 @@ def to_gn_args(args):
 
     # We should not need a special case for x86, but this seems to introduce text relocations
     # even with -fPIC everywhere.
-    gn_args['enable_profiling'] = args.runtime_mode != 'release' and args.android_cpu != 'x86'
+    # gn_args['enable_profiling'] = args.runtime_mode != 'release' and args.android_cpu != 'x86'
 
     if args.arm_float_abi:
       gn_args['arm_float_abi'] = args.arm_float_abi

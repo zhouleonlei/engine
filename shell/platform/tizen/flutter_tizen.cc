@@ -47,6 +47,14 @@ FlutterDesktopEngineRef FlutterDesktopRunEngine(
   return HandleForEngine(engine.release());
 }
 
+FlutterDesktopEngineRef FlutterDesktopSpawnEngine(
+    FlutterDesktopEngineRef engine_ref,
+    const FlutterDesktopEngineProperties& engine_properties) {
+  auto engine = EngineFromHandle(engine_ref);
+  auto spawned_engine = engine->SpawnEngine(engine_properties);
+  return HandleForEngine(spawned_engine);
+}
+
 void FlutterDesktopShutdownEngine(FlutterDesktopEngineRef engine_ref) {
   auto engine = EngineFromHandle(engine_ref);
   engine->StopEngine();

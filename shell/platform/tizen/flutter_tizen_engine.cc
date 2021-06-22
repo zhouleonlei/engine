@@ -112,6 +112,11 @@ void FlutterTizenEngine::InitializeRenderer(int32_t x,
 }
 
 bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
+  return RunOrSpawnEngine(entrypoint, false);
+}
+
+bool FlutterTizenEngine::RunOrSpawnEngine(const char* entrypoint,
+                                          bool isSpawnedEngine) {
   if (engine_ != nullptr) {
     FT_LOG(Error) << "The engine has already started.";
     return false;
@@ -232,8 +237,14 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
 
   FlutterRendererConfig renderer_config = GetRendererConfig();
 
-  auto result = embedder_api_.Run(FLUTTER_ENGINE_VERSION, &renderer_config,
-                                  &args, this, &engine_);
+  FlutterEngineResult result;
+  if (isSpawnedEngine) {
+    result = embedder_api_.Spawn(FLUTTER_ENGINE_VERSION, &renderer_config,
+                                 &args, this, &engine_, main_engine_->engine_);
+  } else {
+    result = embedder_api_.Run(FLUTTER_ENGINE_VERSION, &renderer_config, &args,
+                               this, &engine_);
+  }
   if (result != kSuccess || engine_ == nullptr) {
     FT_LOG(Error) << "Failed to start the Flutter engine with error: "
                   << result;
@@ -269,6 +280,17 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
   SetupLocales();
 
   return true;
+}
+
+FlutterTizenEngine* FlutterTizenEngine::SpawnEngine(
+    const FlutterDesktopEngineProperties& engine_properties) {
+  FlutterProjectBundle project(engine_properties);
+  auto engine = std::make_unique<FlutterTizenEngine>(project);
+  if (!engine->RunOrSpawnEngine(engine_properties.entry_point, true)) {
+    FT_LOG(Error) << "Failed to run the Flutter engine.";
+    return nullptr;
+  }
+  return engine.release();
 }
 
 bool FlutterTizenEngine::StopEngine() {

@@ -51,7 +51,8 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
  public:
   // Creates a new Flutter engine object configured to run |project|.
   explicit FlutterTizenEngine(const FlutterProjectBundle& project);
-
+  explicit FlutterTizenEngine(const FlutterProjectBundle& project,
+                              FlutterTizenEngine* main_engine);
   virtual ~FlutterTizenEngine();
 
   // Prevent copying.
@@ -71,6 +72,10 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   //
   // Returns false if the engine couldn't be started.
   bool RunEngine(const char* entrypoint);
+  bool RunOrSpawnEngine(const char* entrypoint, bool isSpawnedEngine);
+
+  FlutterTizenEngine* SpawnEngine(
+      const FlutterDesktopEngineProperties& engine_properties);
 
   // Stops the engine.
   bool StopEngine();
@@ -204,6 +209,8 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
 
   // The current renderer transformation.
   FlutterTransformation transformation_;
+
+  FlutterTizenEngine* main_engine_;
 };
 
 }  // namespace flutter

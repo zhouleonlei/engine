@@ -72,6 +72,12 @@ FLUTTER_EXPORT FlutterDesktopEngineRef FlutterDesktopRunEngine(
     const FlutterDesktopWindowProperties& window_properties,
     const FlutterDesktopEngineProperties& engine_properties);
 
+// FIXME: It's POC code!
+FLUTTER_EXPORT FlutterDesktopEngineRef FlutterDesktopSpawnEngine(
+    FlutterDesktopEngineRef engine_ref,
+    const FlutterDesktopEngineProperties& engine_properties,
+    bool headed);
+
 // Shuts down the given engine instance.
 //
 // |engine| is no longer valid after this call.

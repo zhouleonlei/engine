@@ -14,8 +14,4 @@ sk_sp<SkFontMgr> GetDefaultFontManager() {
   return SkFontMgr::RefDefault();
 }
 
-sk_sp<SkFontMgr> GetFallbackFontManager() {
-  return nullptr;
-}
-
 }  // namespace txt

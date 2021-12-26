@@ -301,7 +301,7 @@ def to_gn_args(args):
       # attributes in release modes till the toolchain is updated.
       gn_args['skia_enable_api_available_macro'] = args.runtime_mode != "release"
 
-    if sys.platform == 'darwin' and args.target_os not in ['android', 'fuchsia']:
+    if sys.platform == 'darwin' and args.target_os not in ['android', 'fuchsia', 'linux']:
       # OpenGL is deprecated on macOS > 10.11.
       # This is not necessarily needed but enabling this until we have a way to
       # build a macOS metal only shell and a gl only shell.
@@ -389,6 +389,10 @@ def to_gn_args(args):
     # Enable pointer compression on 64-bit mobile targets.
     if args.target_os in ['android'] and gn_args['target_cpu'] in ['x64' , 'arm64']:
       gn_args['dart_use_compressed_pointers'] = True
+
+    # Don't use the default linux sysroot when buliding for Linux on MacOS
+    if sys.platform == 'darwin' and args.target_os == 'linux':
+      gn_args['use_default_linux_sysroot'] = False
 
     return gn_args
 

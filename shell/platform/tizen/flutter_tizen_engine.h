@@ -178,6 +178,11 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   FlutterDesktopMessage ConvertToDesktopMessage(
       const FlutterPlatformMessage& engine_message);
 
+#if defined(TV_PROFILE)
+  // Set bold font and application color when accessibility high contrast state is changed.
+  void SetAccessibilityHighContrastEnabled(int enabled);
+#endif
+
   // Creates and returns a FlutterRendererConfig depending on the current
   // display mode (headed or headless).
   // The user_data received by the render callbacks refers to the

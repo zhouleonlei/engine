@@ -18,6 +18,11 @@ class SettingsChannel {
   explicit SettingsChannel(BinaryMessenger* messenger);
   virtual ~SettingsChannel();
   void SendSettingsEvent();
+#if defined(TV_PROFILE)
+  int GetAccessibilityHighContrastValue();
+  void SetAccessibilityHighContrastStatesHandler(const std::function<void(int)>& handler);
+  void OnAccessibilityHighContrastStateChanged();
+#endif
 
  private:
   bool Prefer24HourTime();
@@ -25,6 +30,9 @@ class SettingsChannel {
   void Dispose();
 
   std::unique_ptr<BasicMessageChannel<rapidjson::Document>> channel_;
+#if defined(TV_PROFILE)
+  std::function<void(bool)> handler_;
+#endif
 };
 
 }  // namespace flutter

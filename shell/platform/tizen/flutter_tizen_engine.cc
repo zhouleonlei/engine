@@ -252,6 +252,14 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
   settings_channel_ = std::make_unique<SettingsChannel>(
       internal_plugin_registrar_->messenger());
 
+#if defined(TV_PROFILE)
+  // Set engine handler to settings
+  settings_channel_->SetAccessibilityHighContrastStatesHandler([this](int enabled) { SetAccessibilityHighContrastEnabled(enabled); });
+
+  // Set initialized value of accessibility high contrast
+  SetAccessibilityHighContrastEnabled(settings_channel_->GetAccessibilityHighContrastValue());
+#endif
+
   if (IsHeaded()) {
     texture_registrar_ = std::make_unique<FlutterTizenTextureRegistrar>(this);
     key_event_channel_ = std::make_unique<KeyEventChannel>(
@@ -490,6 +498,21 @@ FlutterDesktopMessage FlutterTizenEngine::ConvertToDesktopMessage(
   message.response_handle = engine_message.response_handle;
   return message;
 }
+
+#if defined(TV_PROFILE)
+// Set bold font and application color when accessibility high contrast state is changed.
+void FlutterTizenEngine::SetAccessibilityHighContrastEnabled(int enabled) {
+  if (engine_ == nullptr) {
+    return;
+  }
+
+  if (enabled == 0) {
+    embedder_api_.UpdateAccessibilityFeatures(engine_, FlutterAccessibilityFeature(0));
+  } else {
+    embedder_api_.UpdateAccessibilityFeatures(engine_, FlutterAccessibilityFeature(kFlutterAccessibilityFeatureBoldText));
+  }
+}
+#endif
 
 FlutterRendererConfig FlutterTizenEngine::GetRendererConfig() {
   FlutterRendererConfig config = {};

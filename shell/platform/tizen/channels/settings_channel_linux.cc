@@ -13,5 +13,9 @@ void SettingsChannel::Dispose() {}
 bool SettingsChannel::Prefer24HourTime() {
   return false;
 }
-
+#if defined(TV_PROFILE)
+int SettingsChannel::GetAccessibilityHighContrastValue(){};
+void SettingsChannel::OnAccessibilityHighContrastStateChanged(){};
+void SettingsChannel::SetAccessibilityHighContrastStatesHandler(const std::function<void(int)>& handler){};
+#endif
 }  // namespace flutter

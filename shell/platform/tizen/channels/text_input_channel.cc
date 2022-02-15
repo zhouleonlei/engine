@@ -124,11 +124,11 @@ TextInputChannel::TextInputChannel(
 TextInputChannel::~TextInputChannel() {}
 
 bool TextInputChannel::SendKeyEvent(Ecore_Event_Key* key, bool is_down) {
-  if (!active_model_ || !is_down) {
+  if (!active_model_) {
     return false;
   }
 
-  if (!FilterEvent(key)) {
+  if (!FilterEvent(key, is_down) && is_down) {
     HandleUnfilteredEvent(key);
   }
 
@@ -314,7 +314,7 @@ void TextInputChannel::SendStateUpdate(const TextInputModel& model) {
   channel_->InvokeMethod(kUpdateEditingStateMethod, std::move(args));
 }
 
-bool TextInputChannel::FilterEvent(Ecore_Event_Key* event) {
+bool TextInputChannel::FilterEvent(Ecore_Event_Key* event, bool is_down) {
   bool handled = false;
 
 #if defined(__X64_SHELL__)
@@ -339,7 +339,8 @@ bool TextInputChannel::FilterEvent(Ecore_Event_Key* event) {
     return false;
   }
 
-  handled = input_method_context_->FilterEvent(event, is_ime ? "ime" : "");
+  handled =
+      input_method_context_->FilterEvent(event, is_ime ? "ime" : "", is_down);
 
 #ifdef WEARABLE_PROFILE
   if (!handled && !strcmp(event->key, "Return") &&

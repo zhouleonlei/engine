@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/flutter-tizen/build-engine:latest
+      image: ghcr.io/${{ github.repository_owner }}/build-engine:latest
       credentials:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -21,36 +21,21 @@ jobs:
         mode: [debug, release, profile]
         include:
           - arch: arm
-            os: linux
             triple: armv7l-tizen-linux-gnueabi
           - arch: arm64
-            os: linux
             triple: aarch64-tizen-linux-gnu
           - arch: x86
-            os: linux
             triple: i586-tizen-linux-gnueabi
-          - arch: x64
-            os: host
-            triple: none
-            mode: debug
         exclude:
           - arch: x86
             mode: release
           - arch: x86
             mode: profile
 
+    env:
+      OUTPUT_NAME: linux_${{ matrix.mode }}_${{ matrix.arch }}
+
     steps:
-      - name: setup variables for host
-        if: matrix.os == 'host'
-        run: |
-          echo "OUTPUT_NAME=host_${{ matrix.mode }}" >> $GITHUB_ENV
-          echo "BUILD_TARGET_OPT=--build-target flutter_tizen_unittests" >> $GITHUB_ENV
-
-      - name: setup variables for linux
-        if: matrix.os == 'linux'
-        run: |
-          echo "OUTPUT_NAME=linux_${{ matrix.mode }}_${{ matrix.arch }}" >> $GITHUB_ENV
-
       - uses: actions/checkout@v2
         with:
           path: src/flutter
@@ -78,21 +63,36 @@ jobs:
       - name: build
         run: |
           src/flutter/ci/tizen/cache-checksum.sh restore src/out/$OUTPUT_NAME
-          src/flutter/ci/tizen/build-engine.sh \
-            --target-os ${{ matrix.os }} \
-            --target-arch ${{ matrix.arch }} \
+
+          # FIXME: Disable compile options unsupported by the Tizen toolchain.
+          sed -i 's/"-Wno-non-c-typedef-for-linkage",//g' src/build/config/compiler/BUILD.gn
+          sed -i 's/"-Wno-psabi",//g' src/build/config/compiler/BUILD.gn
+          sed -i 's/"-Wno-unused-but-set-parameter",//g' src/build/config/compiler/BUILD.gn
+          sed -i 's/"-Wno-unused-but-set-variable",//g' src/build/config/compiler/BUILD.gn
+
+          src/flutter/tools/gn \
+            --target-os linux --linux-cpu ${{ matrix.arch }} \
+            --no-goma \
+            --target-toolchain /tizen_tools/toolchains \
+            --target-sysroot /tizen_tools/sysroot/${{ matrix.arch }} \
             --target-triple ${{ matrix.triple }} \
-            --runtime-mode ${{ matrix.mode }} $BUILD_TARGET_OPT
+            --runtime-mode ${{ matrix.mode }} \
+            --enable-fontconfig \
+            --no-full-dart-sdk \
+            --no-build-embedder-examples \
+            --embedder-for-target \
+            --build-tizen-shell
+          ninja -C src/out/$OUTPUT_NAME tizen flutter_tizen_unittests
+
           src/flutter/ci/tizen/cache-checksum.sh save src/out/$OUTPUT_NAME
 
       - uses: actions/upload-artifact@v2
-        if: matrix.os == 'host'
+        if: matrix.arch == 'arm' && matrix.mode == 'release'
         with:
-          name: host-${{ matrix.arch }}-${{ matrix.mode }}
+          name: tizen-arm-unittests
           path: src/out/${{ env.OUTPUT_NAME }}/*_unittests
 
       - uses: actions/upload-artifact@v2
-        if: matrix.os == 'linux'
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}
           path: src/out/${{ env.OUTPUT_NAME }}/libflutter_*.so
@@ -203,21 +203,26 @@ jobs:
         run: |
           gclient config --name=src/flutter --unmanaged https://github.com/flutter-tizen/engine
           gclient setdep --var=download_android_deps=False --deps-file=src/flutter/DEPS
-          PYTHONPATH="$PWD/depot_tools" python3 ./src/flutter/ci/tizen/gclient-shallow-sync.py src/flutter/DEPS
+          PYTHONPATH="$PWD/depot_tools" python3 src/flutter/ci/tizen/gclient-shallow-sync.py src/flutter/DEPS
           gclient sync -v --no-history --shallow
 
       - name: build
         run: |
           src/flutter/ci/tizen/cache-checksum.sh restore src/out/$OUTPUT_NAME
+
           # Change host_toolchain to mac/clang_x64.
           sed -i "" "s|//build/toolchain/linux:clang_$host_cpu|//build/toolchain/mac:clang_$host_cpu|g" src/build/config/BUILDCONFIG.gn
+
           # Pass dummy toolchain values to avoid using linux target toolchain settings.
-          python3 ./src/flutter/tools/gn \
+          src/flutter/tools/gn \
             --linux --linux-cpu=${{ matrix.arch }} \
-            --runtime-mode=${{ matrix.mode }} \
             --no-goma \
-            --target-toolchain _ --target-sysroot _ --target-triple _
-          ninja -C ./src/out/$OUTPUT_NAME clang_x64/gen_snapshot
+            --target-toolchain _ \
+            --target-sysroot _ \
+            --target-triple _ \
+            --runtime-mode=${{ matrix.mode }}
+          ninja -C src/out/$OUTPUT_NAME clang_x64/gen_snapshot
+
           src/flutter/ci/tizen/cache-checksum.sh save src/out/$OUTPUT_NAME
 
       - uses: actions/upload-artifact@v2
@@ -228,22 +233,25 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/flutter-tizen/build-engine:latest
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - uses: docker/setup-qemu-action@v1
+        with:
+          platforms: arm
+
+      - uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/download-artifact@v2
         with:
-          name: host-x64-debug
-
-      - name: prepare
-        run: |
-          /etc/init.d/dbus start
-          chmod +x flutter_tizen_unittests
+          name: tizen-arm-unittests
 
       - name: run unittests
+        env:
+          IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/tizen-headed-armv7l
         run: |
-          ./flutter_tizen_unittests
+          chmod +x flutter_tizen_unittests
+          docker run --rm -t -v `pwd`:/root ${IMAGE_TAG} /root/flutter_tizen_unittests

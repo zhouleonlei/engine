@@ -85,7 +85,7 @@ jobs:
           ninja -C src/out/$OUTPUT_NAME tizen
 
           # Build unittests.
-          if [[ "$OUTPUT_NAME" == "linux_release_arm" ]]; then
+          if [ "$OUTPUT_NAME" = "linux_release_arm" ]; then
             ninja -C src/out/$OUTPUT_NAME flutter_tizen_unittests
           fi
 
@@ -113,7 +113,7 @@ jobs:
             !src/out/linux_release_arm/cpp_client_wrapper/engine_method_result.cc
 
       - uses: actions/upload-artifact@v2
-        if: (matrix.arch == 'arm' || matrix.arch == 'arm64') && (matrix.mode == 'release' || matrix.mode == 'profile')
+        if: (matrix.arch == 'arm' || matrix.arch == 'arm64') && matrix.mode != 'debug'
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}_linux-x64
           path: src/out/${{ env.OUTPUT_NAME }}/clang_x64/gen_snapshot
@@ -125,6 +125,9 @@ jobs:
       matrix:
         arch: [arm, arm64]
         mode: [release, profile]
+
+    env:
+      OUTPUT_NAME: linux_${{ matrix.mode }}_${{ matrix.arch }}
 
     steps:
       - name: checkout engine
@@ -165,12 +168,12 @@ jobs:
             --linux --linux-cpu=${{ matrix.arch }} `
             --runtime-mode=${{ matrix.mode }} `
             --no-goma
-          ninja -C .\out\linux_${{ matrix.mode }}_${{ matrix.arch }} gen_snapshot
+          ninja -C .\out\${{ env.OUTPUT_NAME }} gen_snapshot
 
       - uses: actions/upload-artifact@v2
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}_windows-x64
-          path: C:\workspace\engine\src\out\linux_${{ matrix.mode }}_${{ matrix.arch }}\gen_snapshot.exe
+          path: C:\workspace\engine\src\out\${{ env.OUTPUT_NAME }}\gen_snapshot.exe
 
   macos-build:
     runs-on: macos-11
@@ -233,7 +236,7 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}_darwin-x64
-          path: src/out/linux_${{ matrix.mode }}_${{ matrix.arch }}/clang_x64/gen_snapshot
+          path: src/out/${{ env.OUTPUT_NAME }}/clang_x64/gen_snapshot
 
   test:
     needs: build
@@ -260,3 +263,36 @@ jobs:
         run: |
           chmod +x flutter_tizen_unittests
           docker run --rm -t -v `pwd`:/root ${IMAGE_TAG} /root/flutter_tizen_unittests
+
+  release:
+    needs: [windows-build, macos-build, test]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/download-artifact@v2
+
+      - name: create archives
+        run: |
+          rm -r *-unittests
+          for name in tizen-*; do
+            7z a $name.zip ./$name/*
+          done
+
+      - name: set variables
+        run: |
+          echo "TAG_NAME=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_ENV
+          echo "VERSION=$(echo "${{ github.ref_name }}" | cut -d'-' -f2)" >> $GITHUB_ENV
+
+      - uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ env.VERSION }} (${{ env.TAG_NAME }})
+          tag_name: ${{ env.TAG_NAME }}
+          target_commitish: ${{ github.ref_name }}
+          files: tizen-*.zip
+          body: |
+            Flutter engine ${{ env.VERSION }} for Tizen
+
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -11,6 +11,7 @@
 #include "flutter/shell/platform/common/client_wrapper/include/flutter/plugin_registrar.h"
 #include "flutter/shell/platform/common/incoming_message_dispatcher.h"
 #include "flutter/shell/platform/embedder/embedder.h"
+#include "flutter/shell/platform/tizen/accessibility_settings.h"
 #include "flutter/shell/platform/tizen/channels/app_control_channel.h"
 #include "flutter/shell/platform/tizen/channels/key_event_channel.h"
 #include "flutter/shell/platform/tizen/channels/lifecycle_channel.h"
@@ -165,6 +166,9 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   // given |texture_id|.
   bool MarkExternalTextureFrameAvailable(int64_t texture_id);
 
+  // Set bold font when accessibility high contrast state is changed.
+  void EnableAccessibilityFeature(bool bold_text);
+
  private:
   friend class EngineModifier;
 
@@ -244,6 +248,8 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
 
   // A plugin that implements the Tizen window channel.
   std::unique_ptr<WindowChannel> window_channel_;
+
+  std::unique_ptr<AccessibilitySettings> accessibility_settings_;
 
   // The event loop for the main thread that allows for delayed task execution.
   std::unique_ptr<TizenPlatformEventLoop> event_loop_;

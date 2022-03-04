@@ -270,6 +270,8 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
     SetWindowOrientation(0);
   }
 
+  accessibility_settings_ = std::make_unique<AccessibilitySettings>(this);
+
   SetupLocales();
 
   return true;
@@ -471,6 +473,22 @@ bool FlutterTizenEngine::UnregisterExternalTexture(int64_t texture_id) {
 bool FlutterTizenEngine::MarkExternalTextureFrameAvailable(int64_t texture_id) {
   return (embedder_api_.MarkExternalTextureFrameAvailable(
               engine_, texture_id) == kSuccess);
+}
+
+// Set bold font when accessibility high contrast state is
+// changed.
+void FlutterTizenEngine::EnableAccessibilityFeature(bool bold_text) {
+  if (engine_ == nullptr) {
+    return;
+  }
+
+  if (bold_text) {
+    embedder_api_.UpdateAccessibilityFeatures(
+        engine_, kFlutterAccessibilityFeatureBoldText);
+  } else {
+    embedder_api_.UpdateAccessibilityFeatures(engine_,
+                                              FlutterAccessibilityFeature(0));
+  }
 }
 
 // The Flutter Engine calls out to this function when new platform messages

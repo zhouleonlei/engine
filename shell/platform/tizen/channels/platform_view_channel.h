@@ -13,7 +13,6 @@
 
 #include "flutter/shell/platform/common/client_wrapper/include/flutter/binary_messenger.h"
 #include "flutter/shell/platform/common/client_wrapper/include/flutter/method_channel.h"
-#include "rapidjson/document.h"
 
 class PlatformView;
 class PlatformViewFactory;
@@ -26,19 +25,21 @@ class PlatformViewChannel {
   virtual ~PlatformViewChannel();
 
   void Dispose();
-  void RemoveViewInstanceIfNeeded(int view_id);
-  void ClearViewInstances();
-  void ClearViewFactories();
 
   std::map<std::string, std::unique_ptr<PlatformViewFactory>>& ViewFactories() {
     return view_factories_;
   }
-  std::map<int, PlatformView*>& ViewInstances() { return view_instances_; }
 
-  void SendKeyEvent(Ecore_Event_Key* key, bool is_down);
-  int CurrentFocusedViewId();
+  void SendKeyEvent(Ecore_Event_Key* event, bool is_down);
 
  private:
+  PlatformView* FindViewById(int view_id);
+  PlatformView* FindFocusedView();
+
+  void RemoveViewIfExists(int view_id);
+  void ClearViews();
+  void ClearViewFactories();
+
   void HandleMethodCall(const MethodCall<EncodableValue>& call,
                         std::unique_ptr<MethodResult<EncodableValue>> result);
 
@@ -55,7 +56,7 @@ class PlatformViewChannel {
 
   std::unique_ptr<MethodChannel<EncodableValue>> channel_;
   std::map<std::string, std::unique_ptr<PlatformViewFactory>> view_factories_;
-  std::map<int, PlatformView*> view_instances_;
+  std::map<int, PlatformView*> views_;
 };
 
 }  // namespace flutter

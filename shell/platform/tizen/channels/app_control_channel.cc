@@ -21,9 +21,11 @@ constexpr char kEventChannelName[] = "tizen/internal/app_control_event";
 AppControlChannel::AppControlChannel(BinaryMessenger* messenger) {
   method_channel_ = std::make_unique<MethodChannel<EncodableValue>>(
       messenger, kChannelName, &StandardMethodCodec::GetInstance());
-  method_channel_->SetMethodCallHandler([this](const auto& call, auto result) {
-    this->HandleMethodCall(call, std::move(result));
-  });
+  method_channel_->SetMethodCallHandler(
+      [this](const MethodCall<EncodableValue>& call,
+             std::unique_ptr<MethodResult<EncodableValue>> result) {
+        this->HandleMethodCall(call, std::move(result));
+      });
 
   event_channel_ = std::make_unique<EventChannel<EncodableValue>>(
       messenger, kEventChannelName, &StandardMethodCodec::GetInstance());
@@ -65,21 +67,7 @@ void AppControlChannel::HandleMethodCall(
     std::unique_ptr<MethodResult<EncodableValue>> result) {
   const auto& method_name = method_call.method_name();
 
-  // The methods "create" and "dispose" are deprecated and will be removed in
-  // the future.
-  if (method_name == "create") {
-    auto app_control = std::make_unique<AppControl>();
-    if (app_control->handle()) {
-      result->Success(EncodableValue(app_control->id()));
-      AppControlManager::GetInstance().Insert(std::move(app_control));
-    } else {
-      result->Error("Internal error",
-                    "Could not create an instance of AppControl.");
-    }
-    return;
-  }
-
-  auto arguments = std::get_if<EncodableMap>(method_call.arguments());
+  const auto* arguments = std::get_if<EncodableMap>(method_call.arguments());
   if (!arguments) {
     result->Error("Invalid arguments");
     return;
@@ -89,17 +77,14 @@ void AppControlChannel::HandleMethodCall(
     result->Error("Invalid arguments", "No ID provided.");
     return;
   }
-  auto app_control = AppControlManager::GetInstance().FindById(*id);
+  AppControl* app_control = AppControlManager::GetInstance().FindById(*id);
   if (!app_control) {
     result->Error("Invalid arguments",
                   "No instance of AppControl matches the given ID.");
     return;
   }
 
-  if (method_name == "dispose") {
-    AppControlManager::GetInstance().Remove(app_control->id());
-    result->Success();
-  } else if (method_name == "getMatchedAppIds") {
+  if (method_name == "getMatchedAppIds") {
     EncodableList app_ids;
     AppControlResult ret = app_control->GetMatchedAppIds(app_ids);
     if (ret) {
@@ -146,38 +131,18 @@ void AppControlChannel::Reply(
   }
 
   EncodableValueHolder<int32_t> reply_id(arguments, "replyId");
-  if (reply_id) {
-    auto reply_app_control =
-        AppControlManager::GetInstance().FindById(*reply_id);
-    if (!reply_app_control) {
-      result->Error("Invalid arguments",
-                    "No instance of AppControl matches the given ID.");
-      return;
-    }
-    AppControlResult ret = app_control->Reply(reply_app_control, *result_str);
-    if (ret) {
-      result->Success();
-    } else {
-      result->Error(ret.code(), ret.message());
-    }
+  if (!reply_id) {
+    result->Error("Invalid arguments", "No replyId provided.");
     return;
   }
-
-  // Deprecated. Use replyId instead.
-  EncodableValueHolder<int32_t> request_id(arguments, "requestId");
-  if (!request_id) {
-    result->Error("Invalid arguments",
-                  "Either replyId or requestId must be provided.");
-    return;
-  }
-  auto request_app_control =
-      AppControlManager::GetInstance().FindById(*request_id);
-  if (!request_app_control) {
+  AppControl* reply_app_control =
+      AppControlManager::GetInstance().FindById(*reply_id);
+  if (!reply_app_control) {
     result->Error("Invalid arguments",
                   "No instance of AppControl matches the given ID.");
     return;
   }
-  AppControlResult ret = request_app_control->Reply(app_control, *result_str);
+  AppControlResult ret = app_control->Reply(reply_app_control, *result_str);
   if (ret) {
     result->Success();
   } else {
@@ -191,7 +156,7 @@ void AppControlChannel::SendLaunchRequest(
     std::unique_ptr<MethodResult<EncodableValue>> result) {
   EncodableValueHolder<bool> wait_for_reply(arguments, "waitForReply");
   if (wait_for_reply && *wait_for_reply) {
-    auto result_ptr = result.release();
+    auto* result_ptr = result.release();
     auto on_reply = [result_ptr](const EncodableValue& response) {
       result_ptr->Success(response);
       delete result_ptr;

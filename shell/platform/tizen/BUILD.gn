@@ -101,6 +101,7 @@ template("embedder") {
 
     sources = [
       "accessibility_settings.cc",
+      "channels/accessibility_channel.cc",
       "channels/app_control.cc",
       "channels/app_control_channel.cc",
       "channels/feedback_manager.cc",
@@ -128,6 +129,13 @@ template("embedder") {
       "touch_event_handler.cc",
     ]
 
+    if (target_name != "flutter_tizen_wearable") {
+      sources += [
+        "accessibility_bridge_delegate_tizen.cc",
+        "flutter_platform_node_delegate_tizen.cc",
+      ]
+    }
+
     libs = [
       "base-utils-i18n",
       "capi-appfw-application",
@@ -143,6 +151,7 @@ template("embedder") {
       "ecore_input",
       "efl-extension",
       "eina",
+      "elementary",
       "feedback",
       "tbm",
       "tdm-client",
@@ -196,6 +205,10 @@ template("embedder") {
       "//third_party/dart/runtime:dart_api",
       "//third_party/rapidjson",
     ]
+
+    if (target_name != "flutter_tizen_wearable") {
+      deps += [ "//flutter/shell/platform/common:common_cpp_accessibility" ]
+    }
   }
 }
 
@@ -256,6 +269,7 @@ executable("flutter_tizen_unittests") {
     ":flutter_tizen_source",
     "//flutter/runtime:libdart",
     "//flutter/shell/platform/common:common_cpp",
+    "//flutter/shell/platform/common:common_cpp_accessibility",
     "//flutter/shell/platform/common/client_wrapper:client_wrapper",
     "//flutter/shell/platform/embedder:embedder_headers",
     "//flutter/shell/platform/embedder:embedder_test_utils",

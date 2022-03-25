@@ -34,24 +34,12 @@ EVAS_GL_GLOBAL_GLES3_DECLARE();
 
 namespace flutter {
 
-static void OnCollectTexture(void* textureGL) {
-  auto* weak_texture =
-      reinterpret_cast<std::weak_ptr<ExternalTexture>*>(textureGL);
-  auto strong_texture = weak_texture->lock();
-  delete weak_texture;
-  if (strong_texture) {
-    strong_texture->OnDestruction();
-  }
-}
-
 ExternalTextureSurfaceGL::ExternalTextureSurfaceGL(
     ExternalTextureExtensionType gl_extension,
     FlutterDesktopGpuBufferTextureCallback texture_callback,
-    FlutterDesktopGpuBufferDestructionCallback destruction_callback,
     void* user_data)
     : ExternalTexture(gl_extension),
       texture_callback_(texture_callback),
-      destruction_callback_(destruction_callback),
       user_data_(user_data) {}
 
 ExternalTextureSurfaceGL::~ExternalTextureSurfaceGL() {
@@ -77,6 +65,9 @@ bool ExternalTextureSurfaceGL::PopulateTexture(
 
   if (!gpu_buffer->buffer) {
     FT_LOG(Info) << "tbm_surface is null for texture ID: " << texture_id_;
+    if (gpu_buffer->release_callback) {
+      gpu_buffer->release_callback(gpu_buffer->release_context);
+    }
     return false;
   }
   const tbm_surface_h tbm_surface =
@@ -85,6 +76,9 @@ bool ExternalTextureSurfaceGL::PopulateTexture(
   tbm_surface_info_s info;
   if (tbm_surface_get_info(tbm_surface, &info) != TBM_SURFACE_ERROR_NONE) {
     FT_LOG(Info) << "tbm_surface is invalid for texture ID: " << texture_id_;
+    if (gpu_buffer->release_callback) {
+      gpu_buffer->release_callback(gpu_buffer->release_context);
+    }
     return false;
   }
 
@@ -98,9 +92,15 @@ bool ExternalTextureSurfaceGL::PopulateTexture(
   } else if (state_->gl_extension == ExternalTextureExtensionType::kDmaBuffer) {
     FT_LOG(Error)
         << "EGL_EXT_image_dma_buf_import is not supported this renderer.";
+    if (gpu_buffer->release_callback) {
+      gpu_buffer->release_callback(gpu_buffer->release_context);
+    }
     return false;
   }
   if (!egl_src_image) {
+    if (gpu_buffer->release_callback) {
+      gpu_buffer->release_callback(gpu_buffer->release_context);
+    }
     return false;
   }
   if (state_->gl_texture == 0) {
@@ -179,6 +179,9 @@ bool ExternalTextureSurfaceGL::PopulateTexture(
       FT_LOG(Error) << "Either EGL_TIZEN_image_native_surface or "
                        "EGL_EXT_image_dma_buf_import shoule be supported.";
     }
+    if (gpu_buffer->release_callback) {
+      gpu_buffer->release_callback(gpu_buffer->release_context);
+    }
     return false;
   }
   if (state_->gl_texture == 0) {
@@ -206,22 +209,17 @@ bool ExternalTextureSurfaceGL::PopulateTexture(
     n_eglDestroyImageKHR(eglGetCurrentDisplay(), egl_src_image);
   }
 #endif
-
   opengl_texture->target = GL_TEXTURE_EXTERNAL_OES;
   opengl_texture->name = state_->gl_texture;
   opengl_texture->format = GL_RGBA8;
-  opengl_texture->destruction_callback = OnCollectTexture;
-  auto* weak_texture = new std::weak_ptr<ExternalTexture>(shared_from_this());
-  opengl_texture->user_data = weak_texture;
+  opengl_texture->destruction_callback = nullptr;
+  opengl_texture->user_data = nullptr;
   opengl_texture->width = width;
   opengl_texture->height = height;
-  return true;
-}
-
-void ExternalTextureSurfaceGL::OnDestruction() {
-  if (destruction_callback_) {
-    destruction_callback_(user_data_);
+  if (gpu_buffer->release_callback) {
+    gpu_buffer->release_callback(gpu_buffer->release_context);
   }
+  return true;
 }
 
 }  // namespace flutter

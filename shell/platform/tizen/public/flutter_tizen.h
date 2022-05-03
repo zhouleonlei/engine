@@ -21,11 +21,12 @@ extern "C" {
 struct FlutterDesktopEngine;
 typedef struct FlutterDesktopEngine* FlutterDesktopEngineRef;
 
+// Opaque reference to a Flutter view instance.
+struct FlutterDesktopView;
+typedef struct FlutterDesktopView* FlutterDesktopViewRef;
+
 // Properties for configuring the initial settings of a Flutter window.
 typedef struct {
-  // Whether the app is headed or headless. Other properties are ignored if
-  // this value is set to false.
-  bool headed;
   // The x-coordinate of the top left corner of the window.
   int32_t x;
   // The y-coordinate of the top left corner of the window.
@@ -67,67 +68,81 @@ typedef struct {
   const char** dart_entrypoint_argv;
 } FlutterDesktopEngineProperties;
 
+// ========== Engine ==========
+
+// Creates a Flutter engine with the given properties.
+FLUTTER_EXPORT FlutterDesktopEngineRef FlutterDesktopEngineCreate(
+    const FlutterDesktopEngineProperties& engine_properties);
+
 // Runs an instance of a Flutter engine with the given properties.
 //
-// If |headed| is false, the engine is run in headless mode.
-FLUTTER_EXPORT FlutterDesktopEngineRef FlutterDesktopRunEngine(
-    const FlutterDesktopWindowProperties& window_properties,
-    const FlutterDesktopEngineProperties& engine_properties);
+// If view is not specified, the engine is run in headless mode.
+FLUTTER_EXPORT bool FlutterDesktopEngineRun(
+    const FlutterDesktopEngineRef engine);
 
 // Shuts down the given engine instance.
 //
 // |engine| is no longer valid after this call.
-FLUTTER_EXPORT void FlutterDesktopShutdownEngine(
+FLUTTER_EXPORT void FlutterDesktopEngineShutdown(
     FlutterDesktopEngineRef engine);
 
 // Returns the plugin registrar handle for the plugin with the given name.
 //
 // The name must be unique across the application.
 FLUTTER_EXPORT FlutterDesktopPluginRegistrarRef
-FlutterDesktopGetPluginRegistrar(FlutterDesktopEngineRef engine,
-                                 const char* plugin_name);
+FlutterDesktopEngineGetPluginRegistrar(FlutterDesktopEngineRef engine,
+                                       const char* plugin_name);
 
 // Returns the messenger associated with the engine.
 FLUTTER_EXPORT FlutterDesktopMessengerRef
 FlutterDesktopEngineGetMessenger(FlutterDesktopEngineRef engine);
 
-// Returns the window associated with this registrar's engine instance.
-//
-// If the app runs on a wearable device, cast void* to Evas_Object*,
-// otherwise cast it to Ecore_Wl2_Window*.
-FLUTTER_EXPORT void* FlutterDesktopGetWindow(
-    FlutterDesktopPluginRegistrarRef registrar);
-
 // Posts an app control to the engine instance.
-FLUTTER_EXPORT void FlutterDesktopNotifyAppControl(
+FLUTTER_EXPORT void FlutterDesktopEngineNotifyAppControl(
     FlutterDesktopEngineRef engine,
     void* app_control);
 
 // Posts a locale change notification to the engine instance.
-FLUTTER_EXPORT void FlutterDesktopNotifyLocaleChange(
+FLUTTER_EXPORT void FlutterDesktopEngineNotifyLocaleChange(
     FlutterDesktopEngineRef engine);
 
 // Posts a low memory notification to the engine instance.
-FLUTTER_EXPORT void FlutterDesktopNotifyLowMemoryWarning(
+FLUTTER_EXPORT void FlutterDesktopEngineNotifyLowMemoryWarning(
     FlutterDesktopEngineRef engine);
 
 // Notifies the engine that the app is in an inactive state and not receiving
 // user input.
-FLUTTER_EXPORT void FlutterDesktopNotifyAppIsInactive(
+FLUTTER_EXPORT void FlutterDesktopEngineNotifyAppIsInactive(
     FlutterDesktopEngineRef engine);
 
 // Notifies the engine that the app is visible and responding to user input.
-FLUTTER_EXPORT void FlutterDesktopNotifyAppIsResumed(
+FLUTTER_EXPORT void FlutterDesktopEngineNotifyAppIsResumed(
     FlutterDesktopEngineRef engine);
 
 // Notifies the engine that the app is not currently visible to the user, not
 // responding to user input, and running in the background.
-FLUTTER_EXPORT void FlutterDesktopNotifyAppIsPaused(
+FLUTTER_EXPORT void FlutterDesktopEngineNotifyAppIsPaused(
     FlutterDesktopEngineRef engine);
 
 // Notifies the engine that the engine is detached from any host views.
-FLUTTER_EXPORT void FlutterDesktopNotifyAppIsDetached(
+FLUTTER_EXPORT void FlutterDesktopEngineNotifyAppIsDetached(
     FlutterDesktopEngineRef engine);
+
+// ========== View ==========
+
+// Creates a view that hosts and displays the given engine instance.
+FLUTTER_EXPORT FlutterDesktopViewRef FlutterDesktopViewCreateFromNewWindow(
+    const FlutterDesktopWindowProperties& window_properties,
+    FlutterDesktopEngineRef engine);
+
+// ========== Plugin Registrar (extensions) ==========
+
+// Returns the window associated with this registrar's engine instance.
+//
+// If the app runs on a wearable device, cast void* to Evas_Object*,
+// otherwise cast it to Ecore_Wl2_Window*.
+FLUTTER_EXPORT void* FlutterDesktopPluginRegistrarGetNativeWindow(
+    FlutterDesktopPluginRegistrarRef registrar);
 
 #if defined(__cplusplus)
 }  // extern "C"

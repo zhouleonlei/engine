@@ -16,10 +16,8 @@ constexpr char kChannelName[] = "tizen/internal/window";
 
 }  // namespace
 
-WindowChannel::WindowChannel(BinaryMessenger* messenger,
-                             TizenRenderer* renderer,
-                             TizenRenderer::Delegate* delegate)
-    : renderer_(renderer), delegate_(delegate) {
+WindowChannel::WindowChannel(BinaryMessenger* messenger, TizenWindow* window)
+    : window_(window) {
   channel_ = std::make_unique<MethodChannel<EncodableValue>>(
       messenger, kChannelName, &StandardMethodCodec::GetInstance());
   channel_->SetMethodCallHandler(
@@ -37,12 +35,12 @@ void WindowChannel::HandleMethodCall(
   const std::string& method_name = method_call.method_name();
 
   if (method_name == "getWindowGeometry") {
-    TizenRenderer::Geometry geometry = renderer_->GetWindowGeometry();
+    TizenWindow::Geometry geometry = window_->GetWindowGeometry();
     EncodableMap map;
-    map[EncodableValue("x")] = EncodableValue(geometry.x);
-    map[EncodableValue("y")] = EncodableValue(geometry.y);
-    map[EncodableValue("width")] = EncodableValue(geometry.w);
-    map[EncodableValue("height")] = EncodableValue(geometry.h);
+    map[EncodableValue("x")] = EncodableValue(geometry.left);
+    map[EncodableValue("y")] = EncodableValue(geometry.top);
+    map[EncodableValue("width")] = EncodableValue(geometry.width);
+    map[EncodableValue("height")] = EncodableValue(geometry.height);
     result->Success(EncodableValue(map));
   } else if (method_name == "setWindowGeometry") {
 #ifdef TIZEN_RENDERER_EVAS_GL
@@ -59,18 +57,23 @@ void WindowChannel::HandleMethodCall(
     EncodableValueHolder<int32_t> width(arguments, "width");
     EncodableValueHolder<int32_t> height(arguments, "height");
 
-    TizenRenderer::Geometry geometry = renderer_->GetWindowGeometry();
-
-    delegate_->OnGeometryChange(x ? *x : geometry.x, y ? *y : geometry.y,
-                                width ? *width : geometry.w,
-                                height ? *height : geometry.h);
+    TizenWindow::Geometry geometry = window_->GetWindowGeometry();
+    // FIXME: Use SetWindowGeometry() instead of OnGeometryChanged()
+    // After the SetWindowGeometry was successfully executed, I expected a
+    // handler of ECORE_WL2_EVENT_WINDOW_CONFIGURE  to be called, but it didn't.
+    window_->OnGeometryChanged({
+        x ? *x : geometry.left,
+        y ? *y : geometry.top,
+        width ? *width : geometry.width,
+        height ? *height : geometry.height,
+    });
     result->Success();
 #endif
   } else if (method_name == "getScreenGeometry") {
-    TizenRenderer::Geometry geometry = renderer_->GetScreenGeometry();
+    TizenWindow::Geometry geometry = window_->GetScreenGeometry();
     EncodableMap map;
-    map[EncodableValue("width")] = EncodableValue(geometry.w);
-    map[EncodableValue("height")] = EncodableValue(geometry.h);
+    map[EncodableValue("width")] = EncodableValue(geometry.width);
+    map[EncodableValue("height")] = EncodableValue(geometry.height);
     result->Success(EncodableValue(map));
   } else {
     result->NotImplemented();

@@ -4,8 +4,8 @@
 
 #include "tizen_input_method_context.h"
 
-#include "flutter/shell/platform/tizen/flutter_tizen_engine.h"
 #include "flutter/shell/platform/tizen/logger.h"
+#include "flutter/shell/platform/tizen/tizen_window.h"
 
 namespace {
 
@@ -103,9 +103,9 @@ T EcoreEventKeyToEcoreImfEvent(Ecore_Event_Key* event, const char* dev_name) {
 
 namespace flutter {
 
-TizenInputMethodContext::TizenInputMethodContext(FlutterTizenEngine* engine)
-    : engine_(engine) {
-  FT_ASSERT(engine_);
+TizenInputMethodContext::TizenInputMethodContext(TizenWindow* window)
+    : window_(window) {
+  FT_ASSERT(window_);
   ecore_imf_init();
 
   const char* imf_id = ecore_imf_context_default_id_get();
@@ -125,8 +125,7 @@ TizenInputMethodContext::TizenInputMethodContext(FlutterTizenEngine* engine)
   }
 
   ecore_imf_context_client_window_set(
-      imf_context_,
-      reinterpret_cast<void*>(engine_->renderer()->GetWindowId()));
+      imf_context_, reinterpret_cast<void*>(window_->GetWindowId()));
   SetContextOptions();
   SetInputPanelOptions();
   RegisterEventCallbacks();

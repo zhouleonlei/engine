@@ -10,8 +10,10 @@
 #include "flutter/shell/platform/common/incoming_message_dispatcher.h"
 #include "flutter/shell/platform/tizen/flutter_project_bundle.h"
 #include "flutter/shell/platform/tizen/flutter_tizen_engine.h"
+#include "flutter/shell/platform/tizen/flutter_tizen_view.h"
 #include "flutter/shell/platform/tizen/logger.h"
 #include "flutter/shell/platform/tizen/public/flutter_platform_view.h"
+#include "flutter/shell/platform/tizen/tizen_window.h"
 
 namespace {
 
@@ -39,8 +41,7 @@ FlutterDesktopTextureRegistrarRef HandleForTextureRegistrar(
 
 }  // namespace
 
-FlutterDesktopEngineRef FlutterDesktopRunEngine(
-    const FlutterDesktopWindowProperties& window_properties,
+FlutterDesktopEngineRef FlutterDesktopEngineCreate(
     const FlutterDesktopEngineProperties& engine_properties) {
   flutter::FlutterProjectBundle project(engine_properties);
   if (project.HasArgument("--verbose-logging")) {
@@ -53,20 +54,14 @@ FlutterDesktopEngineRef FlutterDesktopRunEngine(
   flutter::Logger::Start();
 
   auto engine = std::make_unique<flutter::FlutterTizenEngine>(project);
-  if (window_properties.headed) {
-    engine->InitializeRenderer(
-        window_properties.x, window_properties.y, window_properties.width,
-        window_properties.height, window_properties.transparent,
-        window_properties.focusable, window_properties.top_level);
-  }
-  if (!engine->RunEngine(engine_properties.entrypoint)) {
-    FT_LOG(Error) << "Failed to start the Flutter engine.";
-    return nullptr;
-  }
   return HandleForEngine(engine.release());
 }
 
-void FlutterDesktopShutdownEngine(FlutterDesktopEngineRef engine_ref) {
+bool FlutterDesktopEngineRun(const FlutterDesktopEngineRef engine) {
+  return EngineFromHandle(engine)->RunEngine();
+}
+
+void FlutterDesktopEngineShutdown(FlutterDesktopEngineRef engine_ref) {
   flutter::Logger::Stop();
 
   flutter::FlutterTizenEngine* engine = EngineFromHandle(engine_ref);
@@ -74,8 +69,9 @@ void FlutterDesktopShutdownEngine(FlutterDesktopEngineRef engine_ref) {
   delete engine;
 }
 
-void* FlutterDesktopGetWindow(FlutterDesktopPluginRegistrarRef registrar) {
-  return registrar->engine->renderer()->GetWindowHandle();
+void* FlutterDesktopPluginRegistrarGetNativeWindow(
+    FlutterDesktopPluginRegistrarRef registrar) {
+  return registrar->engine->view()->window()->GetWindowHandle();
 }
 
 void FlutterDesktopPluginRegistrarEnableInputBlocking(
@@ -85,7 +81,7 @@ void FlutterDesktopPluginRegistrarEnableInputBlocking(
       channel);
 }
 
-FlutterDesktopPluginRegistrarRef FlutterDesktopGetPluginRegistrar(
+FlutterDesktopPluginRegistrarRef FlutterDesktopEngineGetPluginRegistrar(
     FlutterDesktopEngineRef engine,
     const char* plugin_name) {
   // Currently, one registrar acts as the registrar for all plugins, so the
@@ -144,33 +140,34 @@ void FlutterDesktopMessengerSetCallback(FlutterDesktopMessengerRef messenger,
                                                               user_data);
 }
 
-void FlutterDesktopNotifyAppControl(FlutterDesktopEngineRef engine,
-                                    void* app_control) {
+void FlutterDesktopEngineNotifyAppControl(FlutterDesktopEngineRef engine,
+                                          void* app_control) {
   EngineFromHandle(engine)->app_control_channel()->NotifyAppControl(
       app_control);
 }
 
-void FlutterDesktopNotifyLocaleChange(FlutterDesktopEngineRef engine) {
+void FlutterDesktopEngineNotifyLocaleChange(FlutterDesktopEngineRef engine) {
   EngineFromHandle(engine)->SetupLocales();
 }
 
-void FlutterDesktopNotifyLowMemoryWarning(FlutterDesktopEngineRef engine) {
+void FlutterDesktopEngineNotifyLowMemoryWarning(
+    FlutterDesktopEngineRef engine) {
   EngineFromHandle(engine)->NotifyLowMemoryWarning();
 }
 
-void FlutterDesktopNotifyAppIsInactive(FlutterDesktopEngineRef engine) {
+void FlutterDesktopEngineNotifyAppIsInactive(FlutterDesktopEngineRef engine) {
   EngineFromHandle(engine)->lifecycle_channel()->AppIsInactive();
 }
 
-void FlutterDesktopNotifyAppIsResumed(FlutterDesktopEngineRef engine) {
+void FlutterDesktopEngineNotifyAppIsResumed(FlutterDesktopEngineRef engine) {
   EngineFromHandle(engine)->lifecycle_channel()->AppIsResumed();
 }
 
-void FlutterDesktopNotifyAppIsPaused(FlutterDesktopEngineRef engine) {
+void FlutterDesktopEngineNotifyAppIsPaused(FlutterDesktopEngineRef engine) {
   EngineFromHandle(engine)->lifecycle_channel()->AppIsPaused();
 }
 
-void FlutterDesktopNotifyAppIsDetached(FlutterDesktopEngineRef engine) {
+void FlutterDesktopEngineNotifyAppIsDetached(FlutterDesktopEngineRef engine) {
   EngineFromHandle(engine)->lifecycle_channel()->AppIsDetached();
 }
 

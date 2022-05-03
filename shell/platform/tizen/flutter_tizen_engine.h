@@ -20,24 +20,19 @@
 #include "flutter/shell/platform/tizen/channels/key_event_channel.h"
 #include "flutter/shell/platform/tizen/channels/lifecycle_channel.h"
 #include "flutter/shell/platform/tizen/channels/navigation_channel.h"
-#include "flutter/shell/platform/tizen/channels/platform_channel.h"
 #include "flutter/shell/platform/tizen/channels/platform_view_channel.h"
 #include "flutter/shell/platform/tizen/channels/settings_channel.h"
-#include "flutter/shell/platform/tizen/channels/text_input_channel.h"
-#include "flutter/shell/platform/tizen/channels/window_channel.h"
 #include "flutter/shell/platform/tizen/flutter_project_bundle.h"
 #include "flutter/shell/platform/tizen/flutter_tizen_texture_registrar.h"
-#include "flutter/shell/platform/tizen/key_event_handler.h"
 #include "flutter/shell/platform/tizen/public/flutter_tizen.h"
 #include "flutter/shell/platform/tizen/tizen_event_loop.h"
 #include "flutter/shell/platform/tizen/tizen_renderer.h"
 #ifdef TIZEN_RENDERER_EVAS_GL
 #include "flutter/shell/platform/tizen/tizen_renderer_evas_gl.h"
 #else
-#include "flutter/shell/platform/tizen/tizen_renderer_ecore_wl2.h"
+#include "flutter/shell/platform/tizen/tizen_renderer_egl.h"
 #include "flutter/shell/platform/tizen/tizen_vsync_waiter.h"
 #endif
-#include "flutter/shell/platform/tizen/touch_event_handler.h"
 
 // State associated with the plugin registrar.
 struct FlutterDesktopPluginRegistrar {
@@ -53,8 +48,10 @@ struct FlutterDesktopMessenger {
 
 namespace flutter {
 
+class FlutterTizenView;
+
 // Manages state associated with the underlying FlutterEngine.
-class FlutterTizenEngine : public TizenRenderer::Delegate {
+class FlutterTizenEngine {
  public:
   // Creates a new Flutter engine object configured to run |project|.
   explicit FlutterTizenEngine(const FlutterProjectBundle& project);
@@ -65,23 +62,24 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   FlutterTizenEngine(FlutterTizenEngine const&) = delete;
   FlutterTizenEngine& operator=(FlutterTizenEngine const&) = delete;
 
-  // Sets up an instance of TizenRenderer.
-  void InitializeRenderer(int32_t x,
-                          int32_t y,
-                          int32_t width,
-                          int32_t height,
-                          bool transparent,
-                          bool focusable,
-                          bool top_level);
-
   // Starts running the engine with the given entrypoint. If null, defaults to
   // main().
   //
   // Returns false if the engine couldn't be started.
-  bool RunEngine(const char* entrypoint);
+  bool RunEngine();
+
+  // Returns true if the engine is currently running.
+  bool IsRunning() { return engine_ != nullptr; }
 
   // Stops the engine.
   bool StopEngine();
+
+  // Sets the view that is displaying this engine's content.
+  void SetView(FlutterTizenView* view);
+
+  // The view displaying this engine's content, if any. This will be null for
+  // headless engines.
+  FlutterTizenView* view() { return view_; }
 
   FlutterDesktopMessengerRef messenger() { return messenger_.get(); }
 
@@ -112,8 +110,6 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   PlatformViewChannel* platform_view_channel() {
     return platform_view_channel_.get();
   }
-
-  TextInputChannel* text_input_channel() { return text_input_channel_.get(); }
 
 #ifndef WEARABLE_PROFILE
   std::weak_ptr<flutter::AccessibilityBridge> accessibility_bridge() {
@@ -150,12 +146,6 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
                          int32_t height,
                          double pixel_ratio);
 
-  void SetWindowOrientation(int32_t degree);
-  void OnOrientationChange(int32_t degree) override;
-  void OnGeometryChange(int32_t x,
-                        int32_t y,
-                        int32_t width,
-                        int32_t height) override;
   void OnVsync(intptr_t baton,
                uint64_t frame_start_time_nanos,
                uint64_t frame_target_time_nanos);
@@ -193,7 +183,7 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   friend class EngineModifier;
 
   // Whether the engine is running in headed or headless mode.
-  bool IsHeaded() { return renderer_ != nullptr; }
+  bool IsHeaded() { return view_ != nullptr; }
 
   // Converts a FlutterPlatformMessage to an equivalent FlutterDesktopMessage.
   FlutterDesktopMessage ConvertToDesktopMessage(
@@ -228,11 +218,8 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   // AOT data for this engine instance, if applicable.
   UniqueAotDataPtr aot_data_;
 
-  // An event dispatcher for Ecore key events.
-  std::unique_ptr<KeyEventHandler> key_event_handler_;
-
-  // An event dispatcher for Ecore mouse events.
-  std::unique_ptr<TouchEventHandler> touch_event_handler_;
+  // The view displaying the content running in this engine, if any.
+  FlutterTizenView* view_ = nullptr;
 
   // The plugin messenger handle given to API clients.
   std::unique_ptr<FlutterDesktopMessenger> messenger_;
@@ -276,20 +263,11 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   // A plugin that implements the Flutter navigation channel.
   std::unique_ptr<NavigationChannel> navigation_channel_;
 
-  // A plugin that implements the Flutter platform channel.
-  std::unique_ptr<PlatformChannel> platform_channel_;
-
   // A plugin that implements the Flutter platform_views channel.
   std::unique_ptr<PlatformViewChannel> platform_view_channel_;
 
   // A plugin that implements the Flutter settings channel.
   std::unique_ptr<SettingsChannel> settings_channel_;
-
-  // A plugin that implements the Flutter textinput channel.
-  std::unique_ptr<TextInputChannel> text_input_channel_;
-
-  // A plugin that implements the Tizen window channel.
-  std::unique_ptr<WindowChannel> window_channel_;
 
   // The event loop for the main thread that allows for delayed task execution.
   std::unique_ptr<TizenPlatformEventLoop> event_loop_;
@@ -305,9 +283,6 @@ class FlutterTizenEngine : public TizenRenderer::Delegate {
   // The vsync waiter for the embedder.
   std::unique_ptr<TizenVsyncWaiter> tizen_vsync_waiter_;
 #endif
-
-  // The current renderer transformation.
-  FlutterTransformation transformation_;
 };
 
 }  // namespace flutter

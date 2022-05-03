@@ -40,6 +40,10 @@ FlutterProjectBundle::FlutterProjectBundle(
     aot_library_path_ = std::filesystem::path(properties.aot_library_path);
   }
 
+  if (properties.entrypoint != nullptr) {
+    custom_dart_entrypoint_ = std::string(properties.entrypoint);
+  }
+
   for (int i = 0; i < properties.dart_entrypoint_argc; i++) {
     dart_entrypoint_arguments_.push_back(
         std::string(properties.dart_entrypoint_argv[i]));

@@ -13,6 +13,7 @@
 #include "flutter/shell/platform/tizen/accessibility_bridge_delegate_tizen.h"
 #include "flutter/shell/platform/tizen/flutter_platform_node_delegate_tizen.h"
 #endif
+#include "flutter/shell/platform/tizen/flutter_tizen_view.h"
 #include "flutter/shell/platform/tizen/logger.h"
 #include "flutter/shell/platform/tizen/system_utils.h"
 #include "flutter/shell/platform/tizen/tizen_input_method_context.h"
@@ -25,16 +26,6 @@ namespace {
 constexpr size_t kPlatformTaskRunnerIdentifier = 1;
 #ifdef TIZEN_RENDERER_EVAS_GL
 constexpr size_t kRenderTaskRunnerIdentifier = 2;
-#endif
-
-#if defined(MOBILE_PROFILE)
-constexpr double kProfileFactor = 0.7;
-#elif defined(WEARABLE_PROFILE)
-constexpr double kProfileFactor = 0.4;
-#elif defined(TV_PROFILE)
-constexpr double kProfileFactor = 2.0;
-#else
-constexpr double kProfileFactor = 1.0;
 #endif
 
 // Converts a LanguageInfo struct to a FlutterLocale struct. |info| must outlive
@@ -74,33 +65,8 @@ FlutterTizenEngine::FlutterTizenEngine(const FlutterProjectBundle& project)
         }
       });
 
-  messenger_ = std::make_unique<FlutterDesktopMessenger>();
-  messenger_->engine = this;
-  message_dispatcher_ =
-      std::make_unique<IncomingMessageDispatcher>(messenger_.get());
-
-  plugin_registrar_ = std::make_unique<FlutterDesktopPluginRegistrar>();
-  plugin_registrar_->engine = this;
-
-  transformation_ = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
-}
-
-FlutterTizenEngine::~FlutterTizenEngine() {
-  renderer_ = nullptr;
-}
-
-void FlutterTizenEngine::InitializeRenderer(int32_t x,
-                                            int32_t y,
-                                            int32_t width,
-                                            int32_t height,
-                                            bool transparent,
-                                            bool focusable,
-                                            bool top_level) {
-  TizenRenderer::Geometry geometry = {x, y, width, height};
-
 #ifdef TIZEN_RENDERER_EVAS_GL
-  renderer_ = std::make_unique<TizenRendererEvasGL>(
-      geometry, transparent, focusable, top_level, *this);
+  renderer_ = std::make_unique<TizenRendererEvasGL>();
 
   render_loop_ = std::make_unique<TizenRenderEventLoop>(
       std::this_thread::get_id(),  // main thread
@@ -112,14 +78,23 @@ void FlutterTizenEngine::InitializeRenderer(int32_t x,
       },
       renderer_.get());
 #else
-  renderer_ = std::make_unique<TizenRendererEcoreWl2>(
-      geometry, transparent, focusable, top_level, *this);
-
-  tizen_vsync_waiter_ = std::make_unique<TizenVsyncWaiter>(this);
+  renderer_ = std::make_unique<TizenRendererEgl>();
 #endif
+
+  messenger_ = std::make_unique<FlutterDesktopMessenger>();
+  messenger_->engine = this;
+  message_dispatcher_ =
+      std::make_unique<IncomingMessageDispatcher>(messenger_.get());
+
+  plugin_registrar_ = std::make_unique<FlutterDesktopPluginRegistrar>();
+  plugin_registrar_->engine = this;
 }
 
-bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
+FlutterTizenEngine::~FlutterTizenEngine() {
+  renderer_ = nullptr;
+}
+
+bool FlutterTizenEngine::RunEngine() {
   if (engine_ != nullptr) {
     FT_LOG(Error) << "The engine has already started.";
     return false;
@@ -225,6 +200,7 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
 #endif
 #ifndef TIZEN_RENDERER_EVAS_GL
   if (IsHeaded()) {
+    tizen_vsync_waiter_ = std::make_unique<TizenVsyncWaiter>(this);
     args.vsync_callback = [](void* user_data, intptr_t baton) -> void {
       reinterpret_cast<FlutterTizenEngine*>(user_data)
           ->tizen_vsync_waiter_->AsyncWaitForVsync(baton);
@@ -234,8 +210,8 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
   if (aot_data_) {
     args.aot_data = aot_data_.get();
   }
-  if (entrypoint) {
-    args.custom_dart_entrypoint = entrypoint;
+  if (!project_->custom_dart_entrypoint().empty()) {
+    args.custom_dart_entrypoint = project_->custom_dart_entrypoint().c_str();
   }
 
   FlutterRendererConfig renderer_config = GetRendererConfig();
@@ -256,8 +232,6 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
       internal_plugin_registrar_->messenger());
   lifecycle_channel_ = std::make_unique<LifecycleChannel>(
       internal_plugin_registrar_->messenger());
-  platform_channel_ = std::make_unique<PlatformChannel>(
-      internal_plugin_registrar_->messenger(), renderer_.get());
   settings_channel_ = std::make_unique<SettingsChannel>(
       internal_plugin_registrar_->messenger());
 
@@ -269,16 +243,6 @@ bool FlutterTizenEngine::RunEngine(const char* entrypoint) {
         internal_plugin_registrar_->messenger());
     platform_view_channel_ = std::make_unique<PlatformViewChannel>(
         internal_plugin_registrar_->messenger());
-    text_input_channel_ = std::make_unique<TextInputChannel>(
-        internal_plugin_registrar_->messenger(),
-        std::make_unique<TizenInputMethodContext>(this));
-    window_channel_ = std::make_unique<WindowChannel>(
-        internal_plugin_registrar_->messenger(), renderer_.get(), this);
-
-    key_event_handler_ = std::make_unique<KeyEventHandler>(this);
-    touch_event_handler_ = std::make_unique<TouchEventHandler>(this);
-
-    SetWindowOrientation(0);
   }
 
   accessibility_settings_ = std::make_unique<AccessibilitySettings>(this);
@@ -304,6 +268,10 @@ bool FlutterTizenEngine::StopEngine() {
     return (result == kSuccess);
   }
   return false;
+}
+
+void FlutterTizenEngine::SetView(FlutterTizenView* view) {
+  view_ = view;
 }
 
 void FlutterTizenEngine::SetPluginRegistrarDestructionCallback(
@@ -367,78 +335,8 @@ void FlutterTizenEngine::SendWindowMetrics(int32_t x,
   event.top = static_cast<size_t>(y);
   event.width = static_cast<size_t>(width);
   event.height = static_cast<size_t>(height);
-  if (pixel_ratio == 0.0) {
-    // The scale factor is computed based on the display DPI and the current
-    // profile. A fixed DPI value (72) is used on TVs. See:
-    // https://docs.tizen.org/application/native/guides/ui/efl/multiple-screens
-#ifdef TV_PROFILE
-    double dpi = 72.0;
-#else
-    double dpi = static_cast<double>(renderer_->GetDpi());
-#endif
-    double scale_factor = dpi / 90.0 * kProfileFactor;
-    event.pixel_ratio = std::max(scale_factor, 1.0);
-  } else {
-    event.pixel_ratio = pixel_ratio;
-  }
+  event.pixel_ratio = pixel_ratio;
   embedder_api_.SendWindowMetricsEvent(engine_, &event);
-}
-
-// This must be called at least once in order to initialize the value of
-// transformation_.
-void FlutterTizenEngine::SetWindowOrientation(int32_t degree) {
-  if (!renderer_->IsValid()) {
-    return;
-  }
-
-  renderer_->SetRotate(degree);
-  // Compute renderer transformation based on the angle of rotation.
-  double rad = (360 - degree) * M_PI / 180;
-  TizenRenderer::Geometry geometry = renderer_->GetWindowGeometry();
-  double width = geometry.w;
-  double height = geometry.h;
-
-  double trans_x = 0.0, trans_y = 0.0;
-  if (degree == 90) {
-    trans_y = height;
-  } else if (degree == 180) {
-    trans_x = width;
-    trans_y = height;
-  } else if (degree == 270) {
-    trans_x = width;
-  }
-  transformation_ = {
-      cos(rad), -sin(rad), trans_x,  // x
-      sin(rad), cos(rad),  trans_y,  // y
-      0.0,      0.0,       1.0       // perspective
-  };
-  touch_event_handler_->rotation = degree;
-  if (degree == 90 || degree == 270) {
-    std::swap(width, height);
-  }
-  renderer_->ResizeWithRotation(geometry.x, geometry.y, width, height, degree);
-  // Window position does not change on rotation regardless of its orientation.
-  SendWindowMetrics(geometry.x, geometry.y, width, height, 0.0);
-}
-
-void FlutterTizenEngine::OnOrientationChange(int32_t degree) {
-  SetWindowOrientation(degree);
-}
-
-void FlutterTizenEngine::OnGeometryChange(int32_t x,
-                                          int32_t y,
-                                          int32_t width,
-                                          int32_t height) {
-#ifdef TIZEN_RENDERER_EVAS_GL
-  FT_UNIMPLEMENTED();
-#else
-  if (!renderer_->IsValid()) {
-    return;
-  }
-  renderer_->SetGeometry(x, y, width, height);
-  renderer_->ResizeWithRotation(x, y, width, height, 0);
-  SendWindowMetrics(x, y, width, height, 0.0);
-#endif
 }
 
 void FlutterTizenEngine::OnVsync(intptr_t baton,
@@ -512,33 +410,55 @@ FlutterRendererConfig FlutterTizenEngine::GetRendererConfig() {
     config.type = kOpenGL;
     config.open_gl.struct_size = sizeof(config.open_gl);
     config.open_gl.make_current = [](void* user_data) -> bool {
-      return reinterpret_cast<FlutterTizenEngine*>(user_data)
-          ->renderer_->OnMakeCurrent();
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return false;
+      }
+      return engine->view()->OnMakeCurrent();
     };
     config.open_gl.make_resource_current = [](void* user_data) -> bool {
-      return reinterpret_cast<FlutterTizenEngine*>(user_data)
-          ->renderer_->OnMakeResourceCurrent();
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return false;
+      }
+      return engine->view()->OnMakeResourceCurrent();
     };
     config.open_gl.clear_current = [](void* user_data) -> bool {
-      return reinterpret_cast<FlutterTizenEngine*>(user_data)
-          ->renderer_->OnClearCurrent();
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return false;
+      }
+      return engine->view()->OnClearCurrent();
     };
     config.open_gl.present = [](void* user_data) -> bool {
-      return reinterpret_cast<FlutterTizenEngine*>(user_data)
-          ->renderer_->OnPresent();
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return false;
+      }
+      return engine->view()->OnPresent();
     };
     config.open_gl.fbo_callback = [](void* user_data) -> uint32_t {
-      return reinterpret_cast<FlutterTizenEngine*>(user_data)
-          ->renderer_->OnGetFBO();
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return false;
+      }
+      return engine->view()->OnGetFBO();
     };
     config.open_gl.surface_transformation =
         [](void* user_data) -> FlutterTransformation {
-      return reinterpret_cast<FlutterTizenEngine*>(user_data)->transformation_;
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return FlutterTransformation();
+      }
+      return engine->view()->GetFlutterTransformation();
     };
     config.open_gl.gl_proc_resolver = [](void* user_data,
                                          const char* name) -> void* {
-      return reinterpret_cast<FlutterTizenEngine*>(user_data)
-          ->renderer_->OnProcResolver(name);
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return nullptr;
+      }
+      return engine->view()->OnProcResolver(name);
     };
     config.open_gl.gl_external_texture_frame_callback =
         [](void* user_data, int64_t texture_id, size_t width, size_t height,
@@ -616,8 +536,10 @@ void FlutterTizenEngine::OnUpdateSemanticsCustomActions(
           bridge->GetFlutterPlatformNodeDelegateFromID(0);
       std::shared_ptr<FlutterPlatformWindowDelegateTizen> window =
           FlutterPlatformAppDelegateTizen::GetInstance().GetWindow().lock();
-      TizenRenderer::Geometry geometry = engine->renderer_->GetWindowGeometry();
-      window->SetGeometry(geometry.x, geometry.y, geometry.w, geometry.h);
+      TizenWindow::Geometry geometry =
+          engine->view_->window()->GetWindowGeometry();
+      window->SetGeometry(geometry.left, geometry.top, geometry.width,
+                          geometry.height);
       window->SetRootNode(root);
       return;
     }

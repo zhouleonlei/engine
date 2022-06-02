@@ -5,10 +5,6 @@
 #ifndef EMBEDDER_TEXT_INPUT_CHANNEL_H_
 #define EMBEDDER_TEXT_INPUT_CHANNEL_H_
 
-#define EFL_BETA_API_SUPPORT
-#include <Ecore_IMF.h>
-#include <Ecore_Input.h>
-
 #include <memory>
 #include <string>
 
@@ -22,35 +18,63 @@ namespace flutter {
 
 class TextInputChannel {
  public:
-  explicit TextInputChannel(
-      BinaryMessenger* messenger,
-      std::unique_ptr<TizenInputMethodContext> input_method_context);
+  explicit TextInputChannel(BinaryMessenger* messenger,
+                            TizenInputMethodContext* input_method_context);
   virtual ~TextInputChannel();
 
-  bool IsSoftwareKeyboardShowing() { return is_software_keyboard_showing_; }
+  void OnComposeBegin();
 
-  bool SendKeyEvent(Ecore_Event_Key* key, bool is_down);
+  void OnComposeChange(const std::string& str, int cursor_pos);
+
+  void OnComposeEnd();
+
+  void OnCommit(const std::string& str);
+
+  bool SendKey(const char* key,
+               const char* string,
+               const char* compose,
+               uint32_t modifiers,
+               uint32_t scan_code,
+               bool is_down);
 
  private:
+  // Called when a method is called on |channel_|;
   void HandleMethodCall(
       const MethodCall<rapidjson::Document>& method_call,
       std::unique_ptr<MethodResult<rapidjson::Document>> result);
-  void SendStateUpdate(const TextInputModel& model);
-  bool FilterEvent(Ecore_Event_Key* event, bool is_down);
-  void HandleUnfilteredEvent(Ecore_Event_Key* event);
-  void EnterPressed(TextInputModel* model, bool select);
-  void Reset();
-  bool ShouldNotFilterEvent(std::string key, bool is_ime);
 
+  // Sends the current state of |active_model_| to the Flutter engine.
+  void SendStateUpdate();
+
+  void HandleKey(const char* key, const char* string, uint32_t modifiers);
+
+  // Sends an action triggered by the Enter key to the Flutter engine.
+  void EnterPressed();
+
+#ifdef TV_PROFILE
+  // Sends an action triggered by the Select key to the Flutter engine.
+  void SelectPressed();
+#endif
+
+  // The MethodChannel used for communication with the Flutter engine.
   std::unique_ptr<MethodChannel<rapidjson::Document>> channel_;
-  std::unique_ptr<TextInputModel> active_model_;
-  std::unique_ptr<TizenInputMethodContext> input_method_context_;
 
+  // The active model. nullptr if not set.
+  std::unique_ptr<TextInputModel> active_model_;
+
+  // The Tizen input method context. nullptr if not set.
+  TizenInputMethodContext* input_method_context_ = nullptr;
+
+  // The active client id.
   int client_id_ = 0;
-  bool is_software_keyboard_showing_ = false;
+
+  // An action requested by the user on the input client. See available options:
+  // https://api.flutter.dev/flutter/services/TextInputAction-class.html
   std::string input_action_;
+
+  // Keyboard type of the client. See available options:
+  // https://api.flutter.dev/flutter/services/TextInputType-class.html
   std::string input_type_;
-  bool is_in_select_mode_ = false;
 };
 
 }  // namespace flutter

@@ -5,8 +5,8 @@
 #ifndef EMBEDDER_TIZEN_INPUT_METHOD_CONTEXT_H_
 #define EMBEDDER_TIZEN_INPUT_METHOD_CONTEXT_H_
 
-#define EFL_BETA_API_SUPPORT
 #include <Ecore_IMF.h>
+#include <Ecore_IMF_Evas.h>
 #include <Ecore_Input.h>
 
 #include <functional>
@@ -19,9 +19,6 @@ using OnCommit = std::function<void(std::string str)>;
 using OnPreeditChanged = std::function<void(std::string str, int cursor_pos)>;
 using OnPreeditStart = std::function<void()>;
 using OnPreeditEnd = std::function<void()>;
-using OnInputPanelStateChanged = std::function<void(int value)>;
-
-class TizenWindow;
 
 struct InputPanelGeometry {
   int32_t x = 0, y = 0, w = 0, h = 0;
@@ -29,10 +26,14 @@ struct InputPanelGeometry {
 
 class TizenInputMethodContext {
  public:
-  TizenInputMethodContext(TizenWindow* window);
+  TizenInputMethodContext(uintptr_t window_id);
   ~TizenInputMethodContext();
 
-  bool FilterEvent(Ecore_Event_Key* event, const char* dev_name, bool is_down);
+  bool HandleEcoreEventKey(Ecore_Event_Key* event, bool is_down);
+
+  bool HandleEvasEventKeyDown(Evas_Event_Key_Down* event);
+
+  bool HandleEvasEventKeyUp(Evas_Event_Key_Up* event);
 
   InputPanelGeometry GetInputPanelGeometry();
 
@@ -41,6 +42,8 @@ class TizenInputMethodContext {
   void ShowInputPanel();
 
   void HideInputPanel();
+
+  bool IsInputPanelShown();
 
   void SetInputPanelLayout(const std::string& layout);
 
@@ -58,10 +61,6 @@ class TizenInputMethodContext {
 
   void SetOnPreeditEnd(OnPreeditEnd callback) { on_preedit_end_ = callback; }
 
-  void SetOnInputPanelStateChanged(OnInputPanelStateChanged callback) {
-    on_input_panel_state_changed_ = callback;
-  }
-
  private:
   void RegisterEventCallbacks();
   void UnregisterEventCallbacks();
@@ -69,13 +68,13 @@ class TizenInputMethodContext {
   void SetContextOptions();
   void SetInputPanelOptions();
 
-  TizenWindow* window_ = nullptr;
+  bool ShouldIgnoreKey(std::string key, bool is_ime);
+
   Ecore_IMF_Context* imf_context_ = nullptr;
   OnCommit on_commit_;
   OnPreeditChanged on_preedit_changed_;
   OnPreeditStart on_preedit_start_;
   OnPreeditEnd on_preedit_end_;
-  OnInputPanelStateChanged on_input_panel_state_changed_;
   std::unordered_map<Ecore_IMF_Callback_Type, Ecore_IMF_Event_Cb>
       event_callbacks_;
 };

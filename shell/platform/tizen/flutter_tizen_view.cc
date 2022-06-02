@@ -61,8 +61,7 @@ void FlutterTizenView::SetEngine(std::unique_ptr<FlutterTizenEngine> engine) {
       std::make_unique<PlatformChannel>(messenger, window_.get());
   window_channel_ = std::make_unique<WindowChannel>(messenger, window_.get());
   text_input_channel_ = std::make_unique<TextInputChannel>(
-      internal_plugin_registrar_->messenger(),
-      std::make_unique<TizenInputMethodContext>(window_.get()));
+      internal_plugin_registrar_->messenger(), window_->input_method_context());
 }
 
 void FlutterTizenView::CreateRenderSurface() {
@@ -194,27 +193,33 @@ void FlutterTizenView::OnScroll(double x,
       delta_y * scroll_offset_multiplier, timestamp, device_kind, device_id);
 }
 
-void FlutterTizenView::OnKey(Ecore_Event_Key* event, bool is_down) {
+void FlutterTizenView::OnKey(const char* key,
+                             const char* string,
+                             const char* compose,
+                             uint32_t modifiers,
+                             uint32_t scan_code,
+                             bool is_down) {
   if (is_down) {
-    FT_LOG(Info) << "Key symbol: " << event->key << ", code: 0x" << std::setw(8)
-                 << std::setfill('0') << std::right << std::hex
-                 << event->keycode;
+    FT_LOG(Info) << "Key symbol: " << key << ", code: 0x" << std::setw(8)
+                 << std::setfill('0') << std::right << std::hex << scan_code;
   }
 
   if (text_input_channel_) {
-    if (text_input_channel_->SendKeyEvent(event, is_down)) {
+    if (text_input_channel_->SendKey(key, string, compose, modifiers, scan_code,
+                                     is_down)) {
       return;
     }
   }
 
   if (engine_->platform_view_channel()) {
-    engine_->platform_view_channel()->SendKeyEvent(event, is_down);
+    engine_->platform_view_channel()->SendKey(key, string, compose, modifiers,
+                                              scan_code, is_down);
   }
 
   if (engine_->key_event_channel()) {
-    engine_->key_event_channel()->SendKeyEvent(
-        event, is_down,
-        [engine = engine_.get(), symbol = std::string(event->key),
+    engine_->key_event_channel()->SendKey(
+        key, string, compose, modifiers, scan_code, is_down,
+        [engine = engine_.get(), symbol = std::string(key),
          is_down](bool handled) {
           if (handled) {
             return;
@@ -228,6 +233,22 @@ void FlutterTizenView::OnKey(Ecore_Event_Key* event, bool is_down) {
           }
         });
   }
+}
+
+void FlutterTizenView::OnComposeBegin() {
+  text_input_channel_->OnComposeBegin();
+}
+
+void FlutterTizenView::OnComposeChange(const std::string& str, int cursor_pos) {
+  text_input_channel_->OnComposeChange(str, cursor_pos);
+}
+
+void FlutterTizenView::OnComposeEnd() {
+  text_input_channel_->OnComposeEnd();
+}
+
+void FlutterTizenView::OnCommit(const std::string& str) {
+  text_input_channel_->OnCommit(str);
 }
 
 void FlutterTizenView::SendInitialGeometry() {

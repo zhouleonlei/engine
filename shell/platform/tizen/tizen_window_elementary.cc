@@ -17,6 +17,20 @@ static const int kScrollDirectionVertical = 0;
 static const int kScrollDirectionHorizontal = 1;
 static const int kScrollOffsetMultiplier = 20;
 
+uint32_t EvasModifierToEcoreEventModifiers(const Evas_Modifier* evas_modifier) {
+  uint32_t modifiers = 0;
+  if (evas_key_modifier_is_set(evas_modifier, "Control")) {
+    modifiers |= ECORE_EVENT_MODIFIER_CTRL;
+  }
+  if (evas_key_modifier_is_set(evas_modifier, "Alt")) {
+    modifiers |= ECORE_EVENT_MODIFIER_ALT;
+  }
+  if (evas_key_modifier_is_set(evas_modifier, "Shift")) {
+    modifiers |= ECORE_EVENT_MODIFIER_SHIFT;
+  }
+  return modifiers;
+}
+
 }  // namespace
 
 namespace flutter {
@@ -33,6 +47,7 @@ TizenWindowElementary::TizenWindowElementary(Geometry geometry,
 
   SetWindowOptions();
   RegisterEventHandlers();
+  PrepareInputMethod();
   Show();
 }
 
@@ -121,7 +136,7 @@ void TizenWindowElementary::SetWindowOptions() {
 }
 
 void TizenWindowElementary::RegisterEventHandlers() {
-  rotatoin_changed_callback_ = [](void* data, Evas_Object* object,
+  rotation_changed_callback_ = [](void* data, Evas_Object* object,
                                   void* event_info) {
     auto* self = reinterpret_cast<TizenWindowElementary*>(data);
     if (self->view_) {
@@ -134,7 +149,7 @@ void TizenWindowElementary::RegisterEventHandlers() {
     }
   };
   evas_object_smart_callback_add(elm_win_, "rotation,changed",
-                                 rotatoin_changed_callback_, this);
+                                 rotation_changed_callback_, this);
 
   evas_object_callbacks_[EVAS_CALLBACK_MOUSE_DOWN] =
       [](void* data, Evas* evas, Evas_Object* object, void* event_info) {
@@ -217,41 +232,59 @@ void TizenWindowElementary::RegisterEventHandlers() {
       elm_win_, EVAS_CALLBACK_MOUSE_WHEEL,
       evas_object_callbacks_[EVAS_CALLBACK_MOUSE_WHEEL], this);
 
-  // FIXME: ues EVAS_CALLBACK_KEY_DOWN, EVAS_CALLBACK_KEY_UP
-  ecore_event_key_handlers_.push_back(ecore_event_handler_add(
-      ECORE_EVENT_KEY_DOWN,
-      [](void* data, int type, void* event) -> Eina_Bool {
-        auto* self = reinterpret_cast<TizenWindowElementary*>(data);
-        if (self->view_) {
-          auto* key_event = reinterpret_cast<Ecore_Event_Key*>(event);
-          if (key_event->window == self->GetWindowId()) {
-            self->view_->OnKey(key_event, false);
-            return ECORE_CALLBACK_DONE;
-          }
+  evas_object_callbacks_[EVAS_CALLBACK_KEY_DOWN] = [](void* data, Evas* evas,
+                                                      Evas_Object* object,
+                                                      void* event_info) {
+    auto* self = reinterpret_cast<TizenWindowElementary*>(data);
+    if (self->view_) {
+      if (self->elm_win_ == object) {
+        auto* key_event = reinterpret_cast<Evas_Event_Key_Down*>(event_info);
+        int handled = false;
+        if (self->input_method_context_->IsInputPanelShown()) {
+          handled =
+              self->input_method_context_->HandleEvasEventKeyDown(key_event);
         }
-        return ECORE_CALLBACK_PASS_ON;
-      },
-      this));
+        if (!handled) {
+          self->view_->OnKey(
+              key_event->key, key_event->string, key_event->compose,
+              EvasModifierToEcoreEventModifiers(key_event->modifiers),
+              key_event->keycode, true);
+        }
+      }
+    }
+  };
+  evas_object_event_callback_add(elm_win_, EVAS_CALLBACK_KEY_DOWN,
+                                 evas_object_callbacks_[EVAS_CALLBACK_KEY_DOWN],
+                                 this);
 
-  ecore_event_key_handlers_.push_back(ecore_event_handler_add(
-      ECORE_EVENT_KEY_UP,
-      [](void* data, int type, void* event) -> Eina_Bool {
+  evas_object_callbacks_[EVAS_CALLBACK_KEY_UP] =
+      [](void* data, Evas* evas, Evas_Object* object, void* event_info) {
         auto* self = reinterpret_cast<TizenWindowElementary*>(data);
         if (self->view_) {
-          auto* key_event = reinterpret_cast<Ecore_Event_Key*>(event);
-          if (key_event->window == self->GetWindowId()) {
-            self->view_->OnKey(key_event, true);
-            return ECORE_CALLBACK_DONE;
+          if (self->elm_win_ == object) {
+            auto* key_event = reinterpret_cast<Evas_Event_Key_Up*>(event_info);
+            int handled = false;
+            if (self->input_method_context_->IsInputPanelShown()) {
+              handled =
+                  self->input_method_context_->HandleEvasEventKeyUp(key_event);
+            }
+            if (!handled) {
+              self->view_->OnKey(
+                  key_event->key, key_event->string, key_event->compose,
+                  EvasModifierToEcoreEventModifiers(key_event->modifiers),
+                  key_event->keycode, false);
+            }
           }
         }
-        return ECORE_CALLBACK_PASS_ON;
-      },
-      this));
+      };
+  evas_object_event_callback_add(elm_win_, EVAS_CALLBACK_KEY_UP,
+                                 evas_object_callbacks_[EVAS_CALLBACK_KEY_UP],
+                                 this);
 }
 
 void TizenWindowElementary::UnregisterEventHandlers() {
   evas_object_smart_callback_del(elm_win_, "rotation,changed",
-                                 rotatoin_changed_callback_);
+                                 rotation_changed_callback_);
 
   evas_object_event_callback_del(
       elm_win_, EVAS_CALLBACK_MOUSE_DOWN,
@@ -265,11 +298,11 @@ void TizenWindowElementary::UnregisterEventHandlers() {
   evas_object_event_callback_del(
       elm_win_, EVAS_CALLBACK_MOUSE_WHEEL,
       evas_object_callbacks_[EVAS_CALLBACK_MOUSE_WHEEL]);
-
-  for (Ecore_Event_Handler* handler : ecore_event_key_handlers_) {
-    ecore_event_handler_del(handler);
-  }
-  ecore_event_key_handlers_.clear();
+  evas_object_event_callback_del(
+      elm_win_, EVAS_CALLBACK_KEY_DOWN,
+      evas_object_callbacks_[EVAS_CALLBACK_KEY_DOWN]);
+  evas_object_event_callback_del(elm_win_, EVAS_CALLBACK_KEY_UP,
+                                 evas_object_callbacks_[EVAS_CALLBACK_KEY_UP]);
 }
 
 TizenWindow::Geometry TizenWindowElementary::GetWindowGeometry() {
@@ -343,6 +376,22 @@ void TizenWindowElementary::Show() {
 void TizenWindowElementary::OnGeometryChanged(Geometry geometry) {
   SetWindowGeometry(geometry);
   view_->OnResize(geometry.left, geometry.top, geometry.width, geometry.height);
+}
+
+void TizenWindowElementary::PrepareInputMethod() {
+  input_method_context_ =
+      std::make_unique<TizenInputMethodContext>(GetWindowId());
+
+  // Set input method callbacks.
+  input_method_context_->SetOnPreeditStart(
+      [this]() { view_->OnComposeBegin(); });
+  input_method_context_->SetOnPreeditChanged(
+      [this](std::string str, int cursor_pos) {
+        view_->OnComposeChange(str, cursor_pos);
+      });
+  input_method_context_->SetOnPreeditEnd([this]() { view_->OnComposeEnd(); });
+  input_method_context_->SetOnCommit(
+      [this](std::string str) { view_->OnCommit(str); });
 }
 
 }  // namespace flutter

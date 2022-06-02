@@ -79,14 +79,15 @@ void PlatformViewChannel::ClearViewFactories() {
   view_factories_.clear();
 }
 
-void PlatformViewChannel::SendKeyEvent(Ecore_Event_Key* event, bool is_down) {
+void PlatformViewChannel::SendKey(const char* key,
+                                  const char* string,
+                                  const char* compose,
+                                  uint32_t modifiers,
+                                  uint32_t scan_code,
+                                  bool is_down) {
   PlatformView* view = FindFocusedView();
   if (view) {
-    if (is_down) {
-      view->DispatchKeyDownEvent(event);
-    } else {
-      view->DispatchKeyUpEvent(event);
-    }
+    view->SendKey(key, string, compose, modifiers, scan_code, is_down);
   }
 }
 

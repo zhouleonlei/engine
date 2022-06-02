@@ -5,8 +5,6 @@
 #ifndef EMBEDDER_PLATFORM_VIEW_CHANNEL_H_
 #define EMBEDDER_PLATFORM_VIEW_CHANNEL_H_
 
-#include <Ecore_Input.h>
-
 #include <map>
 #include <memory>
 #include <string>
@@ -30,7 +28,12 @@ class PlatformViewChannel {
     return view_factories_;
   }
 
-  void SendKeyEvent(Ecore_Event_Key* event, bool is_down);
+  void SendKey(const char* key,
+               const char* string,
+               const char* compose,
+               uint32_t modifiers,
+               uint32_t scan_code,
+               bool is_down);
 
  private:
   PlatformView* FindViewById(int view_id);

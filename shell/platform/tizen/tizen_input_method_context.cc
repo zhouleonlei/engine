@@ -5,7 +5,6 @@
 #include "tizen_input_method_context.h"
 
 #include "flutter/shell/platform/tizen/logger.h"
-#include "flutter/shell/platform/tizen/tizen_window.h"
 
 namespace {
 
@@ -103,9 +102,7 @@ T EcoreEventKeyToEcoreImfEvent(Ecore_Event_Key* event, const char* dev_name) {
 
 namespace flutter {
 
-TizenInputMethodContext::TizenInputMethodContext(TizenWindow* window)
-    : window_(window) {
-  FT_ASSERT(window_);
+TizenInputMethodContext::TizenInputMethodContext(uintptr_t window_id) {
   ecore_imf_init();
 
   const char* imf_id = ecore_imf_context_default_id_get();
@@ -124,8 +121,8 @@ TizenInputMethodContext::TizenInputMethodContext(TizenWindow* window)
     return;
   }
 
-  ecore_imf_context_client_window_set(
-      imf_context_, reinterpret_cast<void*>(window_->GetWindowId()));
+  ecore_imf_context_client_window_set(imf_context_,
+                                      reinterpret_cast<void*>(window_id));
   SetContextOptions();
   SetInputPanelOptions();
   RegisterEventCallbacks();
@@ -141,26 +138,65 @@ TizenInputMethodContext::~TizenInputMethodContext() {
   ecore_imf_shutdown();
 }
 
-bool TizenInputMethodContext::FilterEvent(Ecore_Event_Key* event,
-                                          const char* dev_name,
-                                          bool is_down) {
+bool TizenInputMethodContext::HandleEcoreEventKey(Ecore_Event_Key* event,
+                                                  bool is_down) {
   FT_ASSERT(imf_context_);
   FT_ASSERT(event);
-  FT_ASSERT(dev_name);
+#ifdef WEARABLE_PROFILE
+  // Hardware keyboard is not supported on watch devices.
+  const char* device_name = "ime";
+  bool is_ime = true;
+#else
+  const char* device_name = ecore_device_name_get(event->dev);
+  bool is_ime = device_name ? strcmp(device_name, "ime") == 0 : true;
+#endif
+
+  if (ShouldIgnoreKey(event->key, is_ime)) {
+    return false;
+  }
 
   if (is_down) {
     Ecore_IMF_Event_Key_Down imf_event =
-        EcoreEventKeyToEcoreImfEvent<Ecore_IMF_Event_Key_Down>(event, dev_name);
+        EcoreEventKeyToEcoreImfEvent<Ecore_IMF_Event_Key_Down>(event,
+                                                               device_name);
     return ecore_imf_context_filter_event(
         imf_context_, ECORE_IMF_EVENT_KEY_DOWN,
         reinterpret_cast<Ecore_IMF_Event*>(&imf_event));
   } else {
     Ecore_IMF_Event_Key_Up imf_event =
-        EcoreEventKeyToEcoreImfEvent<Ecore_IMF_Event_Key_Up>(event, dev_name);
+        EcoreEventKeyToEcoreImfEvent<Ecore_IMF_Event_Key_Up>(event,
+                                                             device_name);
     return ecore_imf_context_filter_event(
         imf_context_, ECORE_IMF_EVENT_KEY_UP,
         reinterpret_cast<Ecore_IMF_Event*>(&imf_event));
   }
+}
+
+bool TizenInputMethodContext::HandleEvasEventKeyDown(
+    Evas_Event_Key_Down* event) {
+  if (ShouldIgnoreKey(event->key, true)) {
+    return false;
+  }
+
+  Ecore_IMF_Event_Key_Down imf_event;
+  ecore_imf_evas_event_key_down_wrap(event, &imf_event);
+
+  return ecore_imf_context_filter_event(
+      imf_context_, ECORE_IMF_EVENT_KEY_DOWN,
+      reinterpret_cast<Ecore_IMF_Event*>(&imf_event));
+}
+
+bool TizenInputMethodContext::HandleEvasEventKeyUp(Evas_Event_Key_Up* event) {
+  if (ShouldIgnoreKey(event->key, true)) {
+    return false;
+  }
+
+  Ecore_IMF_Event_Key_Up imf_event;
+  ecore_imf_evas_event_key_up_wrap(event, &imf_event);
+
+  return ecore_imf_context_filter_event(
+      imf_context_, ECORE_IMF_EVENT_KEY_UP,
+      reinterpret_cast<Ecore_IMF_Event*>(&imf_event));
 }
 
 InputPanelGeometry TizenInputMethodContext::GetInputPanelGeometry() {
@@ -186,6 +222,12 @@ void TizenInputMethodContext::HideInputPanel() {
   FT_ASSERT(imf_context_);
   ecore_imf_context_focus_out(imf_context_);
   ecore_imf_context_input_panel_hide(imf_context_);
+}
+
+bool TizenInputMethodContext::IsInputPanelShown() {
+  Ecore_IMF_Input_Panel_State state =
+      ecore_imf_context_input_panel_state_get(imf_context_);
+  return state == ECORE_IMF_INPUT_PANEL_STATE_SHOW;
 }
 
 void TizenInputMethodContext::SetInputPanelLayout(
@@ -269,17 +311,6 @@ void TizenInputMethodContext::RegisterEventCallbacks() {
   ecore_imf_context_event_callback_add(
       imf_context_, ECORE_IMF_CALLBACK_PREEDIT_CHANGED,
       event_callbacks_[ECORE_IMF_CALLBACK_PREEDIT_CHANGED], this);
-
-  // input panel state callback
-  ecore_imf_context_input_panel_event_callback_add(
-      imf_context_, ECORE_IMF_INPUT_PANEL_STATE_EVENT,
-      [](void* data, Ecore_IMF_Context* context, int value) {
-        auto* self = static_cast<TizenInputMethodContext*>(data);
-        if (self->on_input_panel_state_changed_) {
-          self->on_input_panel_state_changed_(value);
-        }
-      },
-      this);
 }
 
 void TizenInputMethodContext::UnregisterEventCallbacks() {
@@ -296,7 +327,6 @@ void TizenInputMethodContext::UnregisterEventCallbacks() {
   ecore_imf_context_event_callback_del(
       imf_context_, ECORE_IMF_CALLBACK_PREEDIT_END,
       event_callbacks_[ECORE_IMF_CALLBACK_PREEDIT_END]);
-  ecore_imf_context_input_panel_event_callback_clear(imf_context_);
 }
 
 void TizenInputMethodContext::SetContextOptions() {
@@ -314,6 +344,22 @@ void TizenInputMethodContext::SetInputPanelOptions() {
       imf_context_, ECORE_IMF_INPUT_PANEL_RETURN_KEY_TYPE_DEFAULT);
   ecore_imf_context_input_panel_language_set(
       imf_context_, ECORE_IMF_INPUT_PANEL_LANG_AUTOMATIC);
+}
+
+bool TizenInputMethodContext::ShouldIgnoreKey(std::string key, bool is_ime) {
+  // The keys below should be handled in the text_input_channel.
+  if (is_ime && (key == "Left" || key == "Right" || key == "Up" ||
+                 key == "Down" || key == "End" || key == "Home" ||
+                 key == "BackSpace" || key == "Delete")) {
+    return true;
+  }
+#ifdef TV_PROFILE
+  if (is_ime && key == "Select") {
+    return true;
+  }
+#endif
+
+  return false;
 }
 
 }  // namespace flutter

@@ -230,7 +230,7 @@ void PlatformViewChannel::OnResize(
   }
   view->Resize(*width, *height);
 
-  result->Success();
+  result->Success(*arguments);
 }
 
 void PlatformViewChannel::OnTouch(

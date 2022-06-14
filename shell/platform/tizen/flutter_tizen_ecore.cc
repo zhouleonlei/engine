@@ -6,6 +6,7 @@
 
 #include "flutter/shell/platform/tizen/flutter_tizen_engine.h"
 #include "flutter/shell/platform/tizen/flutter_tizen_view.h"
+#include "flutter/shell/platform/tizen/logger.h"
 #include "flutter/shell/platform/tizen/tizen_window_ecore_wl2.h"
 
 namespace {
@@ -24,12 +25,9 @@ FlutterDesktopViewRef HandleForView(flutter::FlutterTizenView* view) {
 FlutterDesktopViewRef FlutterDesktopViewCreateFromNewWindow(
     const FlutterDesktopWindowProperties& window_properties,
     FlutterDesktopEngineRef engine) {
-  flutter::TizenWindow::Geometry window_geometry = {
-      window_properties.x,
-      window_properties.y,
-      window_properties.width,
-      window_properties.height,
-  };
+  flutter::TizenGeometry window_geometry = {
+      window_properties.x, window_properties.y, window_properties.width,
+      window_properties.height};
 
   std::unique_ptr<flutter::TizenWindow> window =
       std::make_unique<flutter::TizenWindowEcoreWl2>(
@@ -51,4 +49,23 @@ FlutterDesktopViewRef FlutterDesktopViewCreateFromNewWindow(
   view->SendInitialGeometry();
 
   return HandleForView(view.release());
+}
+
+FlutterDesktopViewRef FlutterDesktopViewCreateFromElmParent(
+    const FlutterDesktopViewProperties& view_properties,
+    FlutterDesktopEngineRef engine,
+    void* parent) {
+  FT_LOG(Warn) << "Not applicable!";
+  return nullptr;
+}
+
+void* FlutterDesktopViewGetEvasObject(FlutterDesktopViewRef view_ref) {
+  FT_LOG(Warn) << "Not applicable!";
+  return nullptr;
+}
+
+void FlutterDesktopViewResize(FlutterDesktopViewRef view_ref,
+                              int32_t width,
+                              int32_t height) {
+  FT_LOG(Warn) << "Not applicable!";
 }

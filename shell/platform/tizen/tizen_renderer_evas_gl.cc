@@ -58,7 +58,7 @@ bool TizenRendererEvasGL::CreateSurface(void* render_target,
   Evas_Native_Surface native_surface;
   evas_gl_native_surface_get(evas_gl_, gl_surface_, &native_surface);
 
-  image_ = static_cast<Evas_Object*>(render_target_display);
+  image_ = static_cast<Evas_Object*>(render_target);
   evas_object_image_native_surface_set(image_, &native_surface);
 
   evas_object_image_pixels_get_callback_set(

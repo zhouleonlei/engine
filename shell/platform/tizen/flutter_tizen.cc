@@ -71,7 +71,12 @@ void FlutterDesktopEngineShutdown(FlutterDesktopEngineRef engine_ref) {
 
 void* FlutterDesktopPluginRegistrarGetNativeWindow(
     FlutterDesktopPluginRegistrarRef registrar) {
-  return registrar->engine->view()->window()->GetWindowHandle();
+  flutter::TizenViewBase* tizen_view = registrar->engine->view()->tizen_view();
+  if (tizen_view->GetType() == flutter::TizenViewType::kWindow) {
+    auto* window = reinterpret_cast<flutter::TizenWindow*>(tizen_view);
+    return window->GetWindowHandle();
+  }
+  return nullptr;
 }
 
 void FlutterDesktopPluginRegistrarEnableInputBlocking(

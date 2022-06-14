@@ -1,5 +1,4 @@
 // Copyright 2022 Samsung Electronics Co., Ltd. All rights reserved.
-// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,7 +21,7 @@ static const int kScrollOffsetMultiplier = 20;
 
 namespace flutter {
 
-TizenWindowEcoreWl2::TizenWindowEcoreWl2(Geometry geometry,
+TizenWindowEcoreWl2::TizenWindowEcoreWl2(TizenGeometry geometry,
                                          bool transparent,
                                          bool focusable,
                                          bool top_level)
@@ -198,7 +197,7 @@ void TizenWindowEcoreWl2::RegisterEventHandlers() {
           if (rotation_event->win == self->GetWindowId()) {
             int32_t degree = rotation_event->angle;
             self->view_->OnRotate(degree);
-            Geometry geometry = self->GetWindowGeometry();
+            TizenGeometry geometry = self->GetGeometry();
             ecore_wl2_window_rotation_change_done_send(
                 self->ecore_wl2_window_, rotation_event->rotation,
                 geometry.width, geometry.height);
@@ -381,14 +380,14 @@ void TizenWindowEcoreWl2::DestroyWindow() {
   ecore_wl2_shutdown();
 }
 
-TizenWindow::Geometry TizenWindowEcoreWl2::GetWindowGeometry() {
-  Geometry result;
+TizenGeometry TizenWindowEcoreWl2::GetGeometry() {
+  TizenGeometry result;
   ecore_wl2_window_geometry_get(ecore_wl2_window_, &result.left, &result.top,
                                 &result.width, &result.height);
   return result;
 }
 
-void TizenWindowEcoreWl2::SetWindowGeometry(Geometry geometry) {
+void TizenWindowEcoreWl2::SetGeometry(TizenGeometry geometry) {
   ecore_wl2_window_geometry_set(ecore_wl2_window_, geometry.left, geometry.top,
                                 geometry.width, geometry.height);
   // FIXME: The changes set in `ecore_wl2_window_geometry_set` seems to apply
@@ -397,8 +396,8 @@ void TizenWindowEcoreWl2::SetWindowGeometry(Geometry geometry) {
   ecore_wl2_window_position_set(ecore_wl2_window_, geometry.left, geometry.top);
 }
 
-TizenWindow::Geometry TizenWindowEcoreWl2::GetScreenGeometry() {
-  Geometry result = {};
+TizenGeometry TizenWindowEcoreWl2::GetScreenGeometry() {
+  TizenGeometry result = {};
   ecore_wl2_display_screen_size_get(ecore_wl2_display_, &result.width,
                                     &result.height);
   return result;
@@ -421,8 +420,8 @@ uintptr_t TizenWindowEcoreWl2::GetWindowId() {
   return ecore_wl2_window_id_get(ecore_wl2_window_);
 }
 
-void TizenWindowEcoreWl2::ResizeRenderTargetWithRotation(Geometry geometry,
-                                                         int32_t angle) {
+void TizenWindowEcoreWl2::ResizeWithRotation(TizenGeometry geometry,
+                                             int32_t angle) {
   ecore_wl2_egl_window_resize_with_rotation(
       ecore_wl2_egl_window_, geometry.left, geometry.top, geometry.width,
       geometry.height, angle);
@@ -445,10 +444,10 @@ void TizenWindowEcoreWl2::Show() {
   ecore_wl2_window_show(ecore_wl2_window_);
 }
 
-void TizenWindowEcoreWl2::OnGeometryChanged(Geometry geometry) {
+void TizenWindowEcoreWl2::OnGeometryChanged(TizenGeometry geometry) {
   // This implementation mimics the situation in which the handler of
   // ECORE_WL2_EVENT_WINDOW_CONFIGURE is called.
-  SetWindowGeometry(geometry);
+  SetGeometry(geometry);
   view_->OnResize(geometry.left, geometry.top, geometry.width, geometry.height);
 }
 

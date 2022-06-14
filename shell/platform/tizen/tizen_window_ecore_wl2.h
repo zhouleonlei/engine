@@ -1,33 +1,36 @@
 // Copyright 2022 Samsung Electronics Co., Ltd. All rights reserved.
-// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef EMBEDDER_TIZEN_WINDOW_ECORE_WL2_H_
 #define EMBEDDER_TIZEN_WINDOW_ECORE_WL2_H_
 
-#include "flutter/shell/platform/tizen/tizen_window.h"
-
 #define EFL_BETA_API_SUPPORT
 #include <Ecore_Wl2.h>
 #include <tizen-extension-client-protocol.h>
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "flutter/shell/platform/tizen/tizen_window.h"
 
 namespace flutter {
 
 class TizenWindowEcoreWl2 : public TizenWindow {
  public:
-  TizenWindowEcoreWl2(Geometry geometry,
+  TizenWindowEcoreWl2(TizenGeometry geometry,
                       bool transparent,
                       bool focusable,
                       bool top_level);
 
   ~TizenWindowEcoreWl2();
 
-  Geometry GetWindowGeometry() override;
+  TizenGeometry GetGeometry() override;
 
-  void SetWindowGeometry(Geometry geometry) override;
+  void SetGeometry(TizenGeometry geometry) override;
 
-  Geometry GetScreenGeometry() override;
+  TizenGeometry GetScreenGeometry() override;
 
   void* GetRenderTarget() override { return ecore_wl2_egl_window_; }
 
@@ -41,8 +44,7 @@ class TizenWindowEcoreWl2 : public TizenWindow {
 
   void* GetWindowHandle() override { return ecore_wl2_window_; }
 
-  void ResizeRenderTargetWithRotation(Geometry geometry,
-                                      int32_t angle) override;
+  void ResizeWithRotation(TizenGeometry geometry, int32_t angle) override;
 
   void SetPreferredOrientations(const std::vector<int>& rotations) override;
 
@@ -50,7 +52,7 @@ class TizenWindowEcoreWl2 : public TizenWindow {
 
   void Show() override;
 
-  void OnGeometryChanged(Geometry geometry) override;
+  void OnGeometryChanged(TizenGeometry geometry) override;
 
  private:
   bool CreateWindow();

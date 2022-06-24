@@ -27,7 +27,7 @@ VulkanProcTable::VulkanProcTable(
     std::function<void*(VkInstance, const char*)> get_instance_proc_addr)
     : handle_(nullptr), acquired_mandatory_proc_addresses_(false) {
   GetInstanceProcAddr = get_instance_proc_addr;
-  acquired_mandatory_proc_addresses_ = SetupLoaderProcAddresses();
+  // acquired_mandatory_proc_addresses_ = SetupLoaderProcAddresses();
 }
 
 VulkanProcTable::~VulkanProcTable() {
@@ -62,6 +62,7 @@ bool VulkanProcTable::SetupGetInstanceProcAddress() {
       const_cast<uint8_t*>(handle_->ResolveSymbol("vkGetInstanceProcAddr"))
 #endif  // VULKAN_LINK_STATICALLY
   );
+
   if (!GetInstanceProcAddr) {
     FML_DLOG(WARNING) << "Could not acquire vkGetInstanceProcAddr.";
     return false;
@@ -90,12 +91,15 @@ bool VulkanProcTable::SetupInstanceProcAddresses(
   ACQUIRE_PROC(GetDeviceProcAddr, handle);
   ACQUIRE_PROC(GetPhysicalDeviceFeatures, handle);
   ACQUIRE_PROC(GetPhysicalDeviceQueueFamilyProperties, handle);
-#if FML_OS_ANDROID
+
   ACQUIRE_PROC(GetPhysicalDeviceSurfaceCapabilitiesKHR, handle);
   ACQUIRE_PROC(GetPhysicalDeviceSurfaceFormatsKHR, handle);
   ACQUIRE_PROC(GetPhysicalDeviceSurfacePresentModesKHR, handle);
   ACQUIRE_PROC(GetPhysicalDeviceSurfaceSupportKHR, handle);
   ACQUIRE_PROC(DestroySurfaceKHR, handle);
+
+#if FML_OS_ANDROID
+
   ACQUIRE_PROC(CreateAndroidSurfaceKHR, handle);
 #endif  // FML_OS_ANDROID
 
@@ -140,13 +144,16 @@ bool VulkanProcTable::SetupDeviceProcAddresses(
   ACQUIRE_PROC(ResetCommandBuffer, handle);
   ACQUIRE_PROC(ResetFences, handle);
   ACQUIRE_PROC(WaitForFences, handle);
-#ifndef TEST_VULKAN_PROCS
-#if FML_OS_ANDROID
+
   ACQUIRE_PROC(AcquireNextImageKHR, handle);
   ACQUIRE_PROC(CreateSwapchainKHR, handle);
   ACQUIRE_PROC(DestroySwapchainKHR, handle);
   ACQUIRE_PROC(GetSwapchainImagesKHR, handle);
   ACQUIRE_PROC(QueuePresentKHR, handle);
+
+#ifndef TEST_VULKAN_PROCS
+#if FML_OS_ANDROID
+
 #endif  // FML_OS_ANDROID
 #if OS_FUCHSIA
   ACQUIRE_PROC(ImportSemaphoreZirconHandleFUCHSIA, handle);
@@ -168,10 +175,12 @@ bool VulkanProcTable::OpenLibraryHandle(const char* path) {
 #else   // VULKAN_LINK_STATICALLY
   handle_ = fml::NativeLibrary::Create(path);
 #endif  // VULKAN_LINK_STATICALLY
+
   if (!handle_) {
     FML_DLOG(WARNING) << "Could not open Vulkan library handle: " << path;
     return false;
   }
+
   return true;
 }
 

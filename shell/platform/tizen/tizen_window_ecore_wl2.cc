@@ -74,11 +74,16 @@ bool TizenWindowEcoreWl2::CreateWindow() {
   ecore_wl2_window_ = ecore_wl2_window_new(
       ecore_wl2_display_, nullptr, initial_geometry_.left,
       initial_geometry_.top, initial_geometry_.width, initial_geometry_.height);
+#ifdef SHELL_ENABLE_VULKAN
+  wl2_surface_ = ecore_wl2_window_surface_get(ecore_wl2_window_);
 
+  return wl2_surface_ && wl2_display_;
+#else
   ecore_wl2_egl_window_ = ecore_wl2_egl_window_create(
       ecore_wl2_window_, initial_geometry_.width, initial_geometry_.height);
 
   return ecore_wl2_egl_window_ && wl2_display_;
+#endif
 }
 
 void TizenWindowEcoreWl2::SetWindowOptions() {

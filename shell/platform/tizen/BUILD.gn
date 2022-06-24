@@ -6,6 +6,11 @@ import("//flutter/shell/platform/common/client_wrapper/publish.gni")
 import("//flutter/shell/platform/embedder/embedder.gni")
 import("//flutter/shell/platform/tizen/config.gni")
 import("//flutter/testing/testing.gni")
+import("//flutter/vulkan/config.gni")
+
+declare_args() {
+  tizen_enable_vulkan = true
+}
 
 # Sets the rpath of dependent targets (shared libs) to $ORIGIN.
 # libflutter_engine.so should always exist next to the embedder binary.
@@ -89,6 +94,10 @@ config("evas_gl_renderer") {
   defines = [ "TIZEN_RENDERER_EVAS_GL" ]
 }
 
+config("evas_vulkan_renderer") {
+  defines = [ "SHELL_ENABLE_VULKAN" ]
+}
+
 # Template for the embedder build. Used to generate embedders for different
 # device profiles.
 #
@@ -160,6 +169,7 @@ template("embedder") {
       "feedback",
       "tbm",
       "tdm-client",
+      "vulkan",
       "wayland-client",
       "EGL",
       "GLESv2",
@@ -213,8 +223,16 @@ template("embedder") {
         "ecore_wl2",
         "tizen-extension-client",
       ]
-    }
 
+      if (tizen_enable_vulkan) {
+        public_configs += [
+          ":evas_vulkan_renderer",
+          "//flutter/vulkan:vulkan_config",
+        ]
+
+        source += [ "tizen_context_vulkan.cc" ]
+      }
+    }
     public_deps = [ ":flutter_engine" ]
 
     deps = [
@@ -222,8 +240,10 @@ template("embedder") {
       "//flutter/shell/platform/common:common_cpp_input",
       "//flutter/shell/platform/common:common_cpp_library_headers",
       "//flutter/shell/platform/common/client_wrapper:client_wrapper",
+      "//flutter/vulkan",
       "//third_party/dart/runtime:dart_api",
       "//third_party/rapidjson",
+      "//third_party/skia",
     ]
 
     if (target_name != "flutter_tizen_wearable") {
@@ -294,7 +314,9 @@ executable("flutter_tizen_unittests") {
     "//flutter/shell/platform/embedder:embedder_headers",
     "//flutter/shell/platform/embedder:embedder_test_utils",
     "//flutter/testing",
+    "//flutter/vulkan",
     "//third_party/rapidjson",
+    "//third_party/skia",
   ]
 }
 

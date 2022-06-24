@@ -32,6 +32,9 @@
 #else
 #include "flutter/shell/platform/tizen/tizen_renderer_egl.h"
 #include "flutter/shell/platform/tizen/tizen_vsync_waiter.h"
+#ifdef SHELL_ENABLE_VULKAN
+#include "flutter/shell/platform/tizen/tizen_context_vulkan.h"
+#endif
 #endif
 
 // State associated with the plugin registrar.
@@ -96,6 +99,10 @@ class FlutterTizenEngine {
   }
 
   TizenRenderer* renderer() { return renderer_.get(); }
+
+#ifdef SHELL_ENABLE_VULKAN
+  TizenContextVulkan* context() { return context_.get(); }
+#endif
 
   AppControlChannel* app_control_channel() {
     return app_control_channel_.get();
@@ -278,6 +285,11 @@ class FlutterTizenEngine {
 
   // An interface between the Flutter rasterizer and the platform.
   std::unique_ptr<TizenRenderer> renderer_;
+
+#ifdef SHELL_ENABLE_VULKAN
+  // A context for vulkan rendering.
+  std::unique_ptr<TizenContextVulkan> context_;
+#endif
 
 #ifndef TIZEN_RENDERER_EVAS_GL
   // The vsync waiter for the embedder.

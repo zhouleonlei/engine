@@ -79,6 +79,15 @@ void FlutterTizenView::SetEngine(std::unique_ptr<FlutterTizenEngine> engine) {
 }
 
 void FlutterTizenView::CreateRenderSurface() {
+#ifdef SHELL_ENABLE_VULKAN
+  if (engine_ && engine_->context()) {
+    TizenGeometry geometry = tizen_view_->GetGeometry();
+    auto* window = reinterpret_cast<TizenWindow*>(tizen_view_.get());
+    engine_->context()->CreateSurface(window_->GetRenderTarget(),
+                                      window_->GetRenderTargetDisplay(),
+                                      geometry.width, geometry.height);
+  }
+#else
   if (engine_ && engine_->renderer()) {
     TizenGeometry geometry = tizen_view_->GetGeometry();
     if (tizen_view_->GetType() == TizenViewType::kWindow) {
@@ -92,6 +101,7 @@ void FlutterTizenView::CreateRenderSurface() {
                                          geometry.width, geometry.height);
     }
   }
+#endif
 }
 
 void FlutterTizenView::DestroyRenderSurface() {

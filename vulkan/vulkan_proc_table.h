@@ -11,6 +11,7 @@
 #include "flutter/fml/native_library.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
 #include "third_party/skia/include/gpu/vk/GrVkBackendContext.h"
+
 #include "vulkan_handle.h"
 #include "vulkan_interface.h"
 
@@ -113,14 +114,16 @@ class VulkanProcTable : public fml::RefCountedThreadSafe<VulkanProcTable> {
   DEFINE_PROC(ResetCommandBuffer);
   DEFINE_PROC(ResetFences);
   DEFINE_PROC(WaitForFences);
-#ifndef TEST_VULKAN_PROCS
-#if FML_OS_ANDROID
+  DEFINE_PROC(CreateWaylandSurfaceKHR);
+
   DEFINE_PROC(GetPhysicalDeviceSurfaceCapabilitiesKHR);
   DEFINE_PROC(GetPhysicalDeviceSurfaceFormatsKHR);
   DEFINE_PROC(GetPhysicalDeviceSurfacePresentModesKHR);
   DEFINE_PROC(GetPhysicalDeviceSurfaceSupportKHR);
   DEFINE_PROC(GetSwapchainImagesKHR);
   DEFINE_PROC(QueuePresentKHR);
+#ifndef TEST_VULKAN_PROCS
+#if FML_OS_ANDROID
   DEFINE_PROC(CreateAndroidSurfaceKHR);
 #endif  // FML_OS_ANDROID
 #if OS_FUCHSIA

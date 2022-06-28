@@ -238,7 +238,9 @@ bool FlutterTizenEngine::RunEngine() {
   if (IsHeaded()) {
     texture_registrar_ = std::make_unique<FlutterTizenTextureRegistrar>(this);
     key_event_channel_ = std::make_unique<KeyEventChannel>(
-        internal_plugin_registrar_->messenger());
+        internal_plugin_registrar_->messenger(),
+        [this](const FlutterKeyEvent& event, FlutterKeyEventCallback callback,
+               void* user_data) { SendKeyEvent(event, callback, user_data); });
     navigation_channel_ = std::make_unique<NavigationChannel>(
         internal_plugin_registrar_->messenger());
     platform_view_channel_ = std::make_unique<PlatformViewChannel>(
@@ -318,6 +320,12 @@ void FlutterTizenEngine::SendPlatformMessageResponse(
     const uint8_t* data,
     size_t data_length) {
   embedder_api_.SendPlatformMessageResponse(engine_, handle, data, data_length);
+}
+
+void FlutterTizenEngine::SendKeyEvent(const FlutterKeyEvent& event,
+                                      FlutterKeyEventCallback callback,
+                                      void* user_data) {
+  embedder_api_.SendKeyEvent(engine_, &event, callback, user_data);
 }
 
 void FlutterTizenEngine::SendPointerEvent(const FlutterPointerEvent& event) {

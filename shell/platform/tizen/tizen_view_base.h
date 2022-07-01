@@ -48,10 +48,6 @@ class TizenViewBase {
 
   virtual void ResizeWithRotation(TizenGeometry geometry, int32_t degree) = 0;
 
-  // FIXME
-  // This is a temporary implementation that is only used by the window channel.
-  virtual void OnGeometryChanged(TizenGeometry geometry) = 0;
-
   virtual void Show() = 0;
 
   virtual TizenViewType GetType() = 0;

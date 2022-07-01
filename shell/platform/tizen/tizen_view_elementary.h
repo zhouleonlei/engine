@@ -40,8 +40,6 @@ class TizenViewElementary : public TizenView {
 
   void Show() override;
 
-  void OnGeometryChanged(TizenGeometry geometry) override;
-
  private:
   bool CreateView();
 

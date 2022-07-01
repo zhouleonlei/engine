@@ -87,7 +87,6 @@ bool TizenViewElementary::CreateView() {
     return false;
   }
   evas_object_size_hint_align_set(image_, EVAS_HINT_FILL, EVAS_HINT_FILL);
-  EvasObjectResize(image_, initial_width_, initial_height_);
   evas_object_image_size_set(image_, initial_width_, initial_height_);
   evas_object_image_alpha_set(image_, EINA_TRUE);
   elm_table_pack(container_, image_, 0, 0, 1, 1);
@@ -107,6 +106,8 @@ bool TizenViewElementary::CreateView() {
   evas_object_color_set(event_layer_, 0, 0, 0, 0);
   elm_table_pack(container_, event_layer_, 0, 0, 1, 1);
 
+  SetGeometry(TizenGeometry{0, 0, initial_width_, initial_height_});
+
   return true;
 }
 
@@ -117,6 +118,22 @@ void TizenViewElementary::DestroyView() {
 }
 
 void TizenViewElementary::RegisterEventHandlers() {
+  evas_object_callbacks_[EVAS_CALLBACK_RESIZE] =
+      [](void* data, Evas* evas, Evas_Object* object, void* event_info) {
+        auto* self = reinterpret_cast<TizenViewElementary*>(data);
+        if (self->view_) {
+          if (self->container_ == object) {
+            int32_t width = 0, height = 0;
+            evas_object_geometry_get(object, nullptr, nullptr, &width, &height);
+
+            self->view_->OnResize(0, 0, width, height);
+          }
+        }
+      };
+  evas_object_event_callback_add(container_, EVAS_CALLBACK_RESIZE,
+                                 evas_object_callbacks_[EVAS_CALLBACK_RESIZE],
+                                 this);
+
   evas_object_callbacks_[EVAS_CALLBACK_MOUSE_DOWN] =
       [](void* data, Evas* evas, Evas_Object* object, void* event_info) {
         auto* self = reinterpret_cast<TizenViewElementary*>(data);
@@ -263,6 +280,8 @@ void TizenViewElementary::RegisterEventHandlers() {
 }
 
 void TizenViewElementary::UnregisterEventHandlers() {
+  evas_object_event_callback_del(container_, EVAS_CALLBACK_RESIZE,
+                                 evas_object_callbacks_[EVAS_CALLBACK_RESIZE]);
   evas_object_event_callback_del(
       event_layer_, EVAS_CALLBACK_MOUSE_DOWN,
       evas_object_callbacks_[EVAS_CALLBACK_MOUSE_DOWN]);
@@ -292,6 +311,10 @@ TizenGeometry TizenViewElementary::GetGeometry() {
 void TizenViewElementary::SetGeometry(TizenGeometry geometry) {
   EvasObjectResize(image_, geometry.width, geometry.height);
   evas_object_move(image_, geometry.left, geometry.top);
+  evas_object_image_size_set(image_, geometry.width, geometry.height);
+
+  EvasObjectResize(container_, geometry.width, geometry.height);
+  evas_object_move(container_, geometry.left, geometry.top);
 }
 
 int32_t TizenViewElementary::GetDpi() {
@@ -309,6 +332,8 @@ uintptr_t TizenViewElementary::GetWindowId() {
 
 void TizenViewElementary::ResizeWithRotation(TizenGeometry geometry,
                                              int32_t angle) {
+  SetGeometry(geometry);
+
   TizenRendererEvasGL* renderer_evas_gl =
       reinterpret_cast<TizenRendererEvasGL*>(view_->engine()->renderer());
   renderer_evas_gl->ResizeSurface(geometry.width, geometry.height);
@@ -318,11 +343,6 @@ void TizenViewElementary::Show() {
   evas_object_show(container_);
   evas_object_show(image_);
   evas_object_show(event_layer_);
-}
-
-void TizenViewElementary::OnGeometryChanged(TizenGeometry geometry) {
-  SetGeometry(geometry);
-  view_->OnResize(geometry.left, geometry.top, geometry.width, geometry.height);
 }
 
 void TizenViewElementary::PrepareInputMethod() {

@@ -44,15 +44,11 @@ class TizenWindowEcoreWl2 : public TizenWindow {
 
   void* GetWindowHandle() override { return ecore_wl2_window_; }
 
-  void ResizeWithRotation(TizenGeometry geometry, int32_t angle) override;
-
   void SetPreferredOrientations(const std::vector<int>& rotations) override;
 
   void BindKeys(const std::vector<std::string>& keys) override;
 
   void Show() override;
-
-  void OnGeometryChanged(TizenGeometry geometry) override;
 
  private:
   bool CreateWindow();

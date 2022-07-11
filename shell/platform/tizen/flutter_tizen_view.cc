@@ -103,6 +103,13 @@ void FlutterTizenView::DestroyRenderSurface() {
   }
 }
 
+void FlutterTizenView::Resize(int32_t width, int32_t height) {
+  TizenGeometry geometry = tizen_view_->GetGeometry();
+  geometry.width = width;
+  geometry.height = height;
+  tizen_view_->SetGeometry(geometry);
+}
+
 bool FlutterTizenView::OnMakeCurrent() {
   return engine_->renderer()->OnMakeCurrent();
 }
@@ -135,7 +142,8 @@ void FlutterTizenView::OnResize(int32_t left,
     std::swap(width, height);
   }
 
-  tizen_view_->ResizeWithRotation({left, top, width, height}, rotation_degree_);
+  engine_->renderer()->ResizeSurface(width, height);
+
   SendWindowMetrics(left, top, width, height, 0.0);
 }
 
@@ -167,8 +175,7 @@ void FlutterTizenView::OnRotate(int32_t degree) {
     std::swap(width, height);
   }
 
-  tizen_view_->ResizeWithRotation({geometry.left, geometry.top, width, height},
-                                  rotation_degree_);
+  engine_->renderer()->ResizeSurface(width, height);
 
   // Window position does not change on rotation regardless of its orientation.
   SendWindowMetrics(geometry.left, geometry.top, width, height, 0.0);

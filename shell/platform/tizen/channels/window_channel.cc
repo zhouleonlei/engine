@@ -58,10 +58,7 @@ void WindowChannel::HandleMethodCall(
     EncodableValueHolder<int32_t> height(arguments, "height");
 
     TizenGeometry geometry = window_->GetGeometry();
-    // FIXME: Use SetGeometry() instead of OnGeometryChanged()
-    // After the SetGeometry was successfully executed, I expected a
-    // handler of ECORE_WL2_EVENT_WINDOW_CONFIGURE  to be called, but it didn't.
-    window_->OnGeometryChanged({
+    window_->SetGeometry({
         x ? *x : geometry.left,
         y ? *y : geometry.top,
         width ? *width : geometry.width,

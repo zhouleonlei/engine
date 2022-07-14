@@ -188,5 +188,51 @@ TEST_F(FlutterTizenEngineTest, SendPlatformMessageWithResponse) {
   EXPECT_TRUE(send_message_called);
 }
 
+TEST_F(FlutterTizenEngineTest, AddPluginRegistrarDestructionCallback) {
+  EngineModifier modifier(engine_);
+  modifier.embedder_api().Run = MOCK_ENGINE_PROC(
+      Run, ([](size_t version, const FlutterRendererConfig* config,
+               const FlutterProjectArgs* args, void* user_data,
+               FLUTTER_API_SYMBOL(FlutterEngine) * engine_out) {
+        *engine_out = reinterpret_cast<FLUTTER_API_SYMBOL(FlutterEngine)>(1);
+        return kSuccess;
+      }));
+
+  // Stub out UpdateLocales and SendPlatformMessage as we don't have a fully
+  // initialized engine instance.
+  modifier.embedder_api().UpdateLocales = MOCK_ENGINE_PROC(
+      UpdateLocales, ([](auto engine, const FlutterLocale** locales,
+                         size_t locales_count) { return kSuccess; }));
+  modifier.embedder_api().SendPlatformMessage =
+      MOCK_ENGINE_PROC(SendPlatformMessage,
+                       ([](auto engine, auto message) { return kSuccess; }));
+
+  engine_->RunEngine();
+
+  // Verify that destruction handlers don't overwrite each other.
+  int result1 = 0;
+  int result2 = 0;
+  engine_->AddPluginRegistrarDestructionCallback(
+      [](FlutterDesktopPluginRegistrarRef ref) {
+        auto result = reinterpret_cast<int*>(ref);
+        *result = 1;
+      },
+      reinterpret_cast<FlutterDesktopPluginRegistrarRef>(&result1));
+  engine_->AddPluginRegistrarDestructionCallback(
+      [](FlutterDesktopPluginRegistrarRef ref) {
+        auto result = reinterpret_cast<int*>(ref);
+        *result = 2;
+      },
+      reinterpret_cast<FlutterDesktopPluginRegistrarRef>(&result2));
+
+  // Ensure that deallocation doesn't call the actual Shutdown with the bogus
+  // engine pointer that the overridden Run returned.
+  modifier.embedder_api().Shutdown = [](auto engine) { return kSuccess; };
+
+  engine_->StopEngine();
+  EXPECT_EQ(result1, 1);
+  EXPECT_EQ(result2, 2);
+}
+
 }  // namespace testing
 }  // namespace flutter

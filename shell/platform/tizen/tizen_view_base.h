@@ -30,6 +30,8 @@ class TizenViewBase {
   // by the rendering backend.
   virtual void* GetRenderTarget() = 0;
 
+  virtual void* GetNativeHandle() = 0;
+
   virtual uintptr_t GetWindowId() = 0;
 
   // Returns the geometry of the view.

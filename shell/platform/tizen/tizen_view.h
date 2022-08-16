@@ -18,8 +18,6 @@ class TizenView : public TizenViewBase {
   TizenView() = default;
   virtual ~TizenView() = default;
 
-  virtual void* GetRenderTargetContainer() = 0;
-
   TizenViewType GetType() override { return TizenViewType::kView; };
 
  protected:

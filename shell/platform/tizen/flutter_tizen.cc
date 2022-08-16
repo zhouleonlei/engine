@@ -82,14 +82,9 @@ void FlutterDesktopEngineShutdown(FlutterDesktopEngineRef engine_ref) {
   delete engine;
 }
 
-void* FlutterDesktopPluginRegistrarGetNativeWindow(
+FlutterDesktopViewRef FlutterDesktopPluginRegistrarGetView(
     FlutterDesktopPluginRegistrarRef registrar) {
-  flutter::TizenViewBase* tizen_view = registrar->engine->view()->tizen_view();
-  if (tizen_view->GetType() == flutter::TizenViewType::kWindow) {
-    auto* window = reinterpret_cast<flutter::TizenWindow*>(tizen_view);
-    return window->GetWindowHandle();
-  }
-  return nullptr;
+  return HandleForView(registrar->engine->view());
 }
 
 void FlutterDesktopPluginRegistrarEnableInputBlocking(
@@ -231,6 +226,13 @@ FlutterDesktopViewRef FlutterDesktopViewCreateFromNewWindow(
   view->SendInitialGeometry();
 
   return HandleForView(view.release());
+}
+
+void* FlutterDesktopViewGetNativeHandle(FlutterDesktopViewRef view_ref) {
+  flutter::FlutterTizenView* view = ViewFromHandle(view_ref);
+  auto* tizen_view =
+      reinterpret_cast<flutter::TizenViewBase*>(view->tizen_view());
+  return tizen_view->GetNativeHandle();
 }
 
 void FlutterDesktopViewResize(FlutterDesktopViewRef view,

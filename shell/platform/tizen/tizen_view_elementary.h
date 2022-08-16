@@ -30,7 +30,7 @@ class TizenViewElementary : public TizenView {
 
   void* GetRenderTarget() override { return image_; }
 
-  void* GetRenderTargetContainer() override { return container_; }
+  void* GetNativeHandle() override { return container_; }
 
   int32_t GetDpi() override;
 

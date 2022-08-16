@@ -167,11 +167,14 @@ FLUTTER_EXPORT FlutterDesktopViewRef FlutterDesktopViewCreateFromElmParent(
 // @warning This API is a work-in-progress and may change.
 FLUTTER_EXPORT void FlutterDesktopViewDestroy(FlutterDesktopViewRef view);
 
-// Returns a handle to evas object that the FlutterView is drawn to.
+// Returns a native UI toolkit handle for manipulation in host application.
 //
-// Cast the returned void* to Evas_Object*.
+// Cast the returned void*
+// - view elementary    : to Evas_Object*.
+// - window elementary  : to Evas_Object*
+// - window ecore wl2   : to Ecore_Wl2_Window*
 // @warning This API is a work-in-progress and may change.
-FLUTTER_EXPORT void* FlutterDesktopViewGetEvasObject(
+FLUTTER_EXPORT void* FlutterDesktopViewGetNativeHandle(
     FlutterDesktopViewRef view);
 
 // Resizes the view.
@@ -182,11 +185,8 @@ FLUTTER_EXPORT void FlutterDesktopViewResize(FlutterDesktopViewRef view,
 
 // ========== Plugin Registrar (extensions) ==========
 
-// Returns the window associated with this registrar's engine instance.
-//
-// If the app runs on a wearable device, cast void* to Evas_Object*,
-// otherwise cast it to Ecore_Wl2_Window*.
-FLUTTER_EXPORT void* FlutterDesktopPluginRegistrarGetNativeWindow(
+// Returns the view associated with this registrar's engine instance.
+FLUTTER_EXPORT FlutterDesktopViewRef FlutterDesktopPluginRegistrarGetView(
     FlutterDesktopPluginRegistrarRef registrar);
 
 #if defined(__cplusplus)

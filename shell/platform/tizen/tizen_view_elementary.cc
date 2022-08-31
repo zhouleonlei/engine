@@ -4,8 +4,8 @@
 
 #include "tizen_view_elementary.h"
 
-#include <efl_extension.h>
-#include <ui/efl_util.h>
+#include <memory>
+#include <string>
 
 #include "flutter/shell/platform/tizen/logger.h"
 #include "flutter/shell/platform/tizen/tizen_view_event_handler_delegate.h"

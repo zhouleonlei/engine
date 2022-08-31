@@ -241,6 +241,39 @@ void FlutterDesktopViewResize(FlutterDesktopViewRef view,
   ViewFromHandle(view)->Resize(width, height);
 }
 
+void FlutterDesktopViewOnPointerEvent(FlutterDesktopViewRef view,
+                                      FlutterDesktopPointerEventType type,
+                                      double x,
+                                      double y,
+                                      size_t timestamp,
+                                      int32_t device_id) {
+  switch (type) {
+    case FlutterDesktopPointerEventType::kMouseDown:
+    default:
+      ViewFromHandle(view)->OnPointerDown(
+          x, y, timestamp, kFlutterPointerDeviceKindTouch, device_id);
+      break;
+    case FlutterDesktopPointerEventType::kMouseUp:
+      ViewFromHandle(view)->OnPointerUp(
+          x, y, timestamp, kFlutterPointerDeviceKindTouch, device_id);
+      break;
+    case FlutterDesktopPointerEventType::kMouseMove:
+      ViewFromHandle(view)->OnPointerMove(
+          x, y, timestamp, kFlutterPointerDeviceKindTouch, device_id);
+      break;
+  }
+}
+
+void FlutterDesktopViewOnKeyEvent(FlutterDesktopViewRef view,
+                                  const char* key,
+                                  const char* string,
+                                  uint32_t modifiers,
+                                  uint32_t scan_code,
+                                  bool is_down) {
+  ViewFromHandle(view)->OnKey(key, string, nullptr, modifiers, scan_code,
+                              is_down);
+}
+
 void FlutterDesktopRegisterViewFactory(
     FlutterDesktopPluginRegistrarRef registrar,
     const char* view_type,

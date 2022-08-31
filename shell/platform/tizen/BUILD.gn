@@ -42,6 +42,9 @@ config("rootstrap_include_dirs") {
     "$custom_sysroot/usr/include",
     "$custom_sysroot/usr/include/appfw",
     "$custom_sysroot/usr/include/base",
+    "$custom_sysroot/usr/include/dali",
+    "$custom_sysroot/usr/include/dali-adaptor",
+    "$custom_sysroot/usr/include/dali-toolkit",
     "$custom_sysroot/usr/include/dlog",
     "$custom_sysroot/usr/include/ecore-1",
     "$custom_sysroot/usr/include/ecore-imf-1",
@@ -94,8 +97,13 @@ template("embedder") {
   forward_variables_from(invoker,
                          [
                            "target_type",
+                           "enable_nui_support",
                            "defines",
                          ])
+
+  if (!defined(enable_nui_support)) {
+    enable_nui_support = false
+  }
 
   target(target_type, target_name) {
     public = _public_headers
@@ -133,13 +141,6 @@ template("embedder") {
       "tizen_window_elementary.cc",
     ]
 
-    if (target_name != "flutter_tizen_wearable") {
-      sources += [
-        "accessibility_bridge_delegate_tizen.cc",
-        "flutter_platform_node_delegate_tizen.cc",
-      ]
-    }
-
     libs = [
       "base-utils-i18n",
       "capi-appfw-application",
@@ -164,6 +165,26 @@ template("embedder") {
       "wayland-client",
     ]
 
+    if (target_name != "flutter_tizen_wearable") {
+      sources += [
+        "accessibility_bridge_delegate_tizen.cc",
+        "external_texture_pixel_egl.cc",
+        "external_texture_surface_egl.cc",
+        "flutter_platform_node_delegate_tizen.cc",
+        "tizen_renderer_egl.cc",
+        "tizen_vsync_waiter.cc",
+        "tizen_window_ecore_wl2.cc",
+      ]
+
+      libs += [
+        "ecore_wl2",
+        "tdm-client",
+        "tizen-extension-client",
+        "EGL",
+        "GLESv2",
+      ]
+    }
+
     if (target_name == "flutter_tizen_common") {
       sources += [ "channels/tizen_shell.cc" ]
 
@@ -179,29 +200,27 @@ template("embedder") {
     configs +=
         [ "//flutter/shell/platform/common:desktop_library_implementation" ]
 
+    if (enable_nui_support) {
+      sources += [
+        "flutter_tizen_nui.cc",
+        "tizen_view_nui.cc",
+      ]
+
+      libs += [
+        "dali2-adaptor",
+        "dali2-core",
+      ]
+
+      defines += [ "NUI_SUPPORT" ]
+
+      configs -= [ "//build/config/compiler:no_rtti" ]
+    }
+
     public_configs = [
       ":relative_client_wrapper_headers",
       ":rootstrap_include_dirs",
       "//flutter:config",
     ]
-
-    if (target_name != "flutter_tizen_wearable") {
-      sources += [
-        "external_texture_pixel_egl.cc",
-        "external_texture_surface_egl.cc",
-        "tizen_renderer_egl.cc",
-        "tizen_vsync_waiter.cc",
-        "tizen_window_ecore_wl2.cc",
-      ]
-
-      libs += [
-        "ecore_wl2",
-        "tdm-client",
-        "tizen-extension-client",
-        "EGL",
-        "GLESv2",
-      ]
-    }
 
     public_deps = [ ":flutter_engine" ]
 
@@ -226,6 +245,13 @@ embedder("flutter_tizen_mobile") {
   defines = [ "MOBILE_PROFILE" ]
 }
 
+embedder("flutter_tizen_mobile_nui") {
+  target_type = "shared_library"
+  enable_nui_support = true
+
+  defines = [ "MOBILE_PROFILE" ]
+}
+
 embedder("flutter_tizen_wearable") {
   target_type = "shared_library"
 
@@ -234,6 +260,13 @@ embedder("flutter_tizen_wearable") {
 
 embedder("flutter_tizen_tv") {
   target_type = "shared_library"
+
+  defines = [ "TV_PROFILE" ]
+}
+
+embedder("flutter_tizen_tv_nui") {
+  target_type = "shared_library"
+  enable_nui_support = true
 
   defines = [ "TV_PROFILE" ]
 }
@@ -316,7 +349,9 @@ group("tizen") {
     deps += [
       ":flutter_tizen_common",
       ":flutter_tizen_mobile",
+      ":flutter_tizen_mobile_nui",
       ":flutter_tizen_tv",
+      ":flutter_tizen_tv_nui",
       ":flutter_tizen_wearable",
     ]
   }

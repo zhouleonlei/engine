@@ -32,6 +32,12 @@ typedef enum {
   kEGL,
 } FlutterDesktopRendererType;
 
+typedef enum {
+  kMouseDown,
+  kMouseUp,
+  kMouseMove,
+} FlutterDesktopPointerEventType;
+
 // Properties for configuring the initial settings of a Flutter window.
 typedef struct {
   // The x-coordinate of the top left corner of the window.
@@ -154,12 +160,24 @@ FLUTTER_EXPORT FlutterDesktopViewRef FlutterDesktopViewCreateFromNewWindow(
 
 // Creates a view that hosts and displays the given engine instance.
 //
-// The type of parent should be Evas_Object*, Cast Evas_Object* to void*.
+// The type of |parent| must be Evas_Object*.
 // @warning This API is a work-in-progress and may change.
 FLUTTER_EXPORT FlutterDesktopViewRef FlutterDesktopViewCreateFromElmParent(
     const FlutterDesktopViewProperties& view_properties,
     FlutterDesktopEngineRef engine,
     void* parent);
+
+// Creates a view that hosts and displays the given engine instance.
+//
+// The type of |image_view| must be Dali::Toolkit::ImageView*.
+// The type of |native_image_queue| must be Dali::NativeImageSourceQueue*.
+// @warning This API is a work-in-progress and may change.
+FLUTTER_EXPORT FlutterDesktopViewRef FlutterDesktopViewCreateFromImageView(
+    const FlutterDesktopViewProperties& view_properties,
+    FlutterDesktopEngineRef engine,
+    void* image_view,
+    void* native_image_queue,
+    int32_t default_window_id);
 
 // Destroys the view.
 //
@@ -182,6 +200,21 @@ FLUTTER_EXPORT void* FlutterDesktopViewGetNativeHandle(
 FLUTTER_EXPORT void FlutterDesktopViewResize(FlutterDesktopViewRef view,
                                              int32_t width,
                                              int32_t height);
+
+FLUTTER_EXPORT void FlutterDesktopViewOnPointerEvent(
+    FlutterDesktopViewRef view,
+    FlutterDesktopPointerEventType type,
+    double x,
+    double y,
+    size_t timestamp,
+    int32_t device_id);
+
+FLUTTER_EXPORT void FlutterDesktopViewOnKeyEvent(FlutterDesktopViewRef view,
+                                                 const char* key,
+                                                 const char* string,
+                                                 uint32_t modifiers,
+                                                 uint32_t scan_code,
+                                                 bool is_down);
 
 // ========== Plugin Registrar (extensions) ==========
 

@@ -7,6 +7,9 @@
 
 #include "flutter/shell/platform/tizen/logger.h"
 #include "flutter/shell/platform/tizen/tizen_view.h"
+#ifdef NUI_SUPPORT
+#include "flutter/shell/platform/tizen/tizen_view_nui.h"
+#endif
 #include "flutter/shell/platform/tizen/tizen_window.h"
 
 namespace {
@@ -131,7 +134,15 @@ bool FlutterTizenView::OnMakeResourceCurrent() {
 }
 
 bool FlutterTizenView::OnPresent() {
-  return engine_->renderer()->OnPresent();
+  bool result = engine_->renderer()->OnPresent();
+#ifdef NUI_SUPPORT
+  if (tizen_view_->GetType() == flutter::TizenViewType::kView &&
+      engine_->renderer()->type() == FlutterDesktopRendererType::kEGL) {
+    auto* view = reinterpret_cast<TizenViewNui*>(tizen_view_.get());
+    view->RequestRendering();
+  }
+#endif
+  return result;
 }
 
 uint32_t FlutterTizenView::OnGetFBO() {

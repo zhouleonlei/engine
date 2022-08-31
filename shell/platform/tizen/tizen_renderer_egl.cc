@@ -8,6 +8,12 @@
 #include <Ecore_Wl2.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#ifdef NUI_SUPPORT
+#include <dali/devel-api/adaptor-framework/native-image-source-queue.h>
+#endif
+#include <tbm_dummy_display.h>
+#include <tbm_surface.h>
+#include <tbm_surface_queue.h>
 
 #include "flutter/shell/platform/tizen/logger.h"
 
@@ -25,7 +31,12 @@ bool TizenRendererEgl::CreateSurface(void* render_target,
                                      void* render_target_display,
                                      int32_t width,
                                      int32_t height) {
-  egl_display_ = eglGetDisplay(static_cast<wl_display*>(render_target_display));
+  if (render_target_display) {
+    egl_display_ =
+        eglGetDisplay(static_cast<wl_display*>(render_target_display));
+  } else {
+    egl_display_ = eglGetDisplay(tbm_dummy_display_create());
+  }
 
   if (egl_display_ == EGL_NO_DISPLAY) {
     PrintEGLError();
@@ -63,11 +74,27 @@ bool TizenRendererEgl::CreateSurface(void* render_target,
   {
     const EGLint attribs[] = {EGL_NONE};
 
-    auto* egl_window =
-        static_cast<EGLNativeWindowType*>(ecore_wl2_egl_window_native_get(
-            static_cast<Ecore_Wl2_Egl_Window*>(render_target)));
-    egl_surface_ =
-        eglCreateWindowSurface(egl_display_, egl_config_, egl_window, attribs);
+    if (render_target_display) {
+      auto* egl_window =
+          static_cast<EGLNativeWindowType*>(ecore_wl2_egl_window_native_get(
+              static_cast<Ecore_Wl2_Egl_Window*>(render_target)));
+      egl_surface_ = eglCreateWindowSurface(egl_display_, egl_config_,
+                                            egl_window, attribs);
+    } else {
+#ifdef NUI_SUPPORT
+      Dali::NativeImageSourceQueuePtr dali_native_image_queue =
+          static_cast<Dali::NativeImageSourceQueue*>(render_target);
+      tbm_surface_queue_h tbm_surface_queue_ =
+          static_cast<Dali::Any::AnyContainerImpl<tbm_surface_queue_h>*>(
+              dali_native_image_queue->GetNativeImageSourceQueue().mContainer)
+              ->GetValue();
+      auto* egl_window =
+          reinterpret_cast<EGLNativeWindowType*>(tbm_surface_queue_);
+      egl_surface_ = eglCreateWindowSurface(egl_display_, egl_config_,
+                                            egl_window, attribs);
+#endif
+    }
+
     if (egl_surface_ == EGL_NO_SURFACE) {
       FT_LOG(Error) << "Could not create an onscreen window surface.";
       return false;

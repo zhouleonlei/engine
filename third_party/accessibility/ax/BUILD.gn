@@ -9,6 +9,8 @@ source_set("ax") {
   public_configs =
       [ "//flutter/third_party/accessibility:accessibility_config" ]
 
+  configs -= [ "//build/config/compiler:no_rtti" ]
+
   sources = [
     "platform/ax_platform_node.cc",
     "platform/ax_platform_node.h",

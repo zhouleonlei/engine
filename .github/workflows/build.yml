@@ -36,7 +36,7 @@ jobs:
       OUTPUT_NAME: linux_${{ matrix.mode }}_${{ matrix.arch }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: src/flutter
           fetch-depth: 0
@@ -89,27 +89,27 @@ jobs:
 
           src/flutter/ci/tizen/cache-checksum.sh save src/out/$OUTPUT_NAME
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: matrix.arch == 'arm' && matrix.mode == 'release'
         with:
           name: tizen-arm-unittests
           path: src/out/${{ env.OUTPUT_NAME }}/*_unittests
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}
           path: src/out/${{ env.OUTPUT_NAME }}/libflutter_*.so
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: github.event_name == 'push'
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}_symbols
           path: src/out/${{ env.OUTPUT_NAME }}/so.unstripped/libflutter_*.so
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: matrix.arch == 'arm' && matrix.mode == 'release'
         with:
           name: tizen-common
@@ -120,7 +120,7 @@ jobs:
             !src/out/linux_release_arm/cpp_client_wrapper/engine_method_result.cc
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: (matrix.arch == 'arm' || matrix.arch == 'arm64') && matrix.mode != 'debug'
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}_linux-x64
@@ -180,7 +180,7 @@ jobs:
             --no-goma
           ninja -C .\out\${{ env.OUTPUT_NAME }} gen_snapshot
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}_windows-x64
           path: C:\workspace\engine\src\out\${{ env.OUTPUT_NAME }}\gen_snapshot.exe
@@ -198,7 +198,7 @@ jobs:
       OUTPUT_NAME: linux_${{ matrix.mode }}_${{ matrix.arch }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: src/flutter
 
@@ -246,7 +246,7 @@ jobs:
 
           src/flutter/ci/tizen/cache-checksum.sh save src/out/$OUTPUT_NAME
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: tizen-${{ matrix.arch }}-${{ matrix.mode }}_darwin-x64
           path: src/out/${{ env.OUTPUT_NAME }}/clang_x64/gen_snapshot
@@ -257,21 +257,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: docker/setup-qemu-action@v1
+      - uses: docker/setup-qemu-action@v2
         with:
           platforms: arm
 
-      - uses: docker/login-action@v1
+      - uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: tizen-arm-release
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: tizen-arm-unittests
 
@@ -288,9 +288,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
 
       - name: create archives
         run: |

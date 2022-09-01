@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           repository: flutter-tizen/tizen_allowlist
           token: ${{ secrets.TIZENAPI_TOKEN }}
@@ -38,7 +38,7 @@ jobs:
 
       - name: commit success status
         if: ${{ success() }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           script: |
             github.rest.repos.createCommitStatus({
@@ -52,7 +52,7 @@ jobs:
 
       - name: commit failure status
         if: ${{ failure() }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           script: |
             github.rest.repos.createCommitStatus({

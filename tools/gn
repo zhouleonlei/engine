@@ -96,9 +96,7 @@ def is_host_build(args):
   # If target_os == None, then this is a host build.
   # However, for linux arm64 builds, we cross compile from x64 hosts, so the
   # target_os='linux' and linux-cpu='arm64'
-  return args.target_os is None or (
-      args.target_os == 'linux' and args.linux_cpu == 'arm64'
-  )
+  return args.target_os is None
 
 
 # Determines whether a prebuilt Dart SDK can be used instead of building one.
@@ -541,7 +539,7 @@ def to_gn_args(args):
   # There is a special case for Android on Windows because there we _only_ build
   # gen_snapshot, but the build defines otherwise make it look like the build is
   # for a host Windows build and make GN think we will be building ANGLE.
-  if is_host_build(args) or (args.target_os == 'android' and
+  if is_host_build(args) or (args.target_os == 'linux' and
                              get_host_os() == 'win'):
     # Do not build unnecessary parts of the ANGLE tree.
     gn_args['angle_build_all'] = False

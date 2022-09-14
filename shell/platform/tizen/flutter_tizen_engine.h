@@ -31,6 +31,10 @@
 #include "flutter/shell/platform/tizen/tizen_vsync_waiter.h"
 #endif
 
+#ifdef SHELL_ENABLE_VULKAN
+#include "flutter/shell/platform/tizen/tizen_context_vulkan.h"
+#endif
+
 // State associated with the plugin registrar.
 struct FlutterDesktopPluginRegistrar {
   // The engine that owns this state object.
@@ -96,6 +100,10 @@ class FlutterTizenEngine {
   }
 
   TizenRenderer* renderer() { return renderer_.get(); }
+
+#ifdef SHELL_ENABLE_VULKAN
+  TizenContextVulkan* context() { return context_.get(); }
+#endif
 
   AppControlChannel* app_control_channel() {
     return app_control_channel_.get();
@@ -283,6 +291,11 @@ class FlutterTizenEngine {
 
   // An interface between the Flutter rasterizer and the platform.
   std::unique_ptr<TizenRenderer> renderer_;
+
+#ifdef SHELL_ENABLE_VULKAN
+  // A context for vulkan rendering.
+  std::unique_ptr<TizenContextVulkan> context_;
+#endif
 
 #ifndef WEARABLE_PROFILE
   // The vsync waiter for the embedder.

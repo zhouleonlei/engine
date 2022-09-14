@@ -75,10 +75,16 @@ bool TizenWindowEcoreWl2::CreateWindow() {
       ecore_wl2_display_, nullptr, initial_geometry_.left,
       initial_geometry_.top, initial_geometry_.width, initial_geometry_.height);
 
+#ifdef SHELL_ENABLE_VULKAN
+  wl2_surface_ = ecore_wl2_window_surface_get(ecore_wl2_window_);
+
+  return wl2_surface_ && wl2_display_;
+#else
   ecore_wl2_egl_window_ = ecore_wl2_egl_window_create(
       ecore_wl2_window_, initial_geometry_.width, initial_geometry_.height);
 
   return ecore_wl2_egl_window_ && wl2_display_;
+#endif
 }
 
 void TizenWindowEcoreWl2::SetWindowOptions() {
@@ -215,7 +221,8 @@ void TizenWindowEcoreWl2::RegisterEventHandlers() {
         if (self->view_delegate_) {
           auto* configure_event =
               reinterpret_cast<Ecore_Wl2_Event_Window_Configure*>(event);
-          if (configure_event->win == self->GetWindowId()) {
+          if (configure_event->win == self->GetWindowId() &&
+              self->ecore_wl2_egl_window_) {
             ecore_wl2_egl_window_resize_with_rotation(
                 self->ecore_wl2_egl_window_, configure_event->x,
                 configure_event->y, configure_event->w, configure_event->h,
@@ -368,11 +375,12 @@ void TizenWindowEcoreWl2::UnregisterEventHandlers() {
 }
 
 void TizenWindowEcoreWl2::DestroyWindow() {
+#ifndef SHELL_ENABLE_VULKAN
   if (ecore_wl2_egl_window_) {
     ecore_wl2_egl_window_destroy(ecore_wl2_egl_window_);
     ecore_wl2_egl_window_ = nullptr;
   }
-
+#endif
   if (ecore_wl2_window_) {
     ecore_wl2_window_free(ecore_wl2_window_);
     ecore_wl2_window_ = nullptr;

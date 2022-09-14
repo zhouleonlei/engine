@@ -7,6 +7,11 @@ import("//flutter/shell/platform/embedder/embedder.gni")
 import("//flutter/shell/platform/tizen/config.gni")
 import("//flutter/testing/testing.gni")
 
+declare_args() {
+  # Default value is false for opengl renderer, true is for vulkan.
+  tizen_enable_vulkan = false
+}
+
 # Sets the rpath of dependent targets (shared libs) to $ORIGIN.
 # libflutter_engine.so should always exist next to the embedder binary.
 config("embedder_rpath") {
@@ -86,6 +91,10 @@ config("rootstrap_include_dirs") {
     "-Wno-newline-eof",
     "-Wno-macro-redefined",
   ]
+}
+
+config("evas_vulkan_renderer") {
+  defines = [ "SHELL_ENABLE_VULKAN" ]
 }
 
 # Template for the embedder build. Used to generate embedders for different
@@ -235,6 +244,14 @@ template("embedder") {
 
     if (target_name != "flutter_tizen_wearable") {
       deps += [ "//flutter/shell/platform/common:common_cpp_accessibility" ]
+    }
+
+    if (tizen_enable_vulkan) {
+      libs += [ "vulkan" ]
+
+      public_configs += [ ":evas_vulkan_renderer" ]
+
+      sources += [ "tizen_context_vulkan.cc" ]
     }
   }
 }

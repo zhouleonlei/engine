@@ -195,9 +195,13 @@ FlutterDesktopViewRef FlutterDesktopViewCreateFromNewWindow(
   flutter::TizenGeometry window_geometry = {
       window_properties.x, window_properties.y, window_properties.width,
       window_properties.height};
+  FlutterDesktopRendererType renderer_type = window_properties.renderer_type;
+#ifdef SHELL_ENABLE_VULKAN
+  renderer_type = FlutterDesktopRendererType::kEGL;
+#endif
 
   std::unique_ptr<flutter::TizenWindow> window;
-  if (window_properties.renderer_type == FlutterDesktopRendererType::kEvasGL) {
+  if (renderer_type == FlutterDesktopRendererType::kEvasGL) {
     window = std::make_unique<flutter::TizenWindowElementary>(
         window_geometry, window_properties.transparent,
         window_properties.focusable, window_properties.top_level);
@@ -216,7 +220,7 @@ FlutterDesktopViewRef FlutterDesktopViewCreateFromNewWindow(
   // Take ownership of the engine, starting it if necessary.
   view->SetEngine(
       std::unique_ptr<flutter::FlutterTizenEngine>(EngineFromHandle(engine)));
-  view->CreateRenderSurface(window_properties.renderer_type);
+  view->CreateRenderSurface(renderer_type);
   if (!view->engine()->IsRunning()) {
     if (!view->engine()->RunEngine()) {
       return nullptr;

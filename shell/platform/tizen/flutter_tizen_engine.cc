@@ -98,6 +98,10 @@ void FlutterTizenEngine::CreateRenderer(
     renderer_ = std::make_unique<TizenRendererEgl>();
   }
 #endif
+
+#ifdef SHELL_ENABLE_VULKAN
+  context_ = std::make_unique<TizenContextVulkan>();
+#endif
 }
 
 bool FlutterTizenEngine::RunEngine() {
@@ -105,7 +109,12 @@ bool FlutterTizenEngine::RunEngine() {
     FT_LOG(Error) << "The engine has already started.";
     return false;
   }
-  if (IsHeaded() && !renderer_->IsValid()) {
+  if (IsHeaded() &&
+#ifdef SHELL_ENABLE_VULKAN
+      !context_->IsValid()) {
+#else
+      !renderer_->IsValid()) {
+#endif
     FT_LOG(Error) << "The display was not valid.";
     return false;
   }
@@ -424,6 +433,7 @@ FlutterDesktopMessage FlutterTizenEngine::ConvertToDesktopMessage(
 FlutterRendererConfig FlutterTizenEngine::GetRendererConfig() {
   FlutterRendererConfig config = {};
   if (IsHeaded()) {
+#ifndef SHELL_ENABLE_VULKAN
     config.type = kOpenGL;
     config.open_gl.struct_size = sizeof(config.open_gl);
     config.open_gl.make_current = [](void* user_data) -> bool {
@@ -487,6 +497,55 @@ FlutterRendererConfig FlutterTizenEngine::GetRendererConfig() {
       return engine->texture_registrar()->PopulateTexture(texture_id, width,
                                                           height, texture);
     };
+#else
+    config.type = kVulkan;
+    config.vulkan.struct_size = sizeof(config.vulkan);
+    config.vulkan.version = context_->GetAPIVersion();
+    config.vulkan.instance = context_->GetInstance();
+    config.vulkan.physical_device = context_->GetPhysicalDevice();
+    config.vulkan.device = context_->GetLogicalDevice();
+    config.vulkan.queue_family_index = context_->GetGraphicsQueueFamilyIndex();
+    config.vulkan.queue = context_->GetGraphicsQueue();
+    config.vulkan.enabled_instance_extension_count =
+        context_->GetInstanceExtensionCount();
+    config.vulkan.enabled_instance_extensions =
+        context_->GetInstanceExtension();
+    config.vulkan.enabled_device_extension_count =
+        context_->GetDeviceExtensionCount();
+    config.vulkan.enabled_device_extensions = context_->GetDeviceExtension();
+    config.vulkan.get_instance_proc_address_callback =
+        [](void* user_data, FlutterVulkanInstanceHandle instance,
+           const char* name) -> void* {
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return nullptr;
+      }
+
+      return reinterpret_cast<void*>(engine->context()->GetInstanceProcAddr(
+          reinterpret_cast<VkInstance>(instance), name));
+    };
+    config.vulkan.get_next_image_callback =
+        [](void* user_data,
+           const FlutterFrameInfo* frame) -> FlutterVulkanImage {
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return FlutterVulkanImage();
+      }
+
+      return engine->context()->GetNextImageCallback(
+          reinterpret_cast<const FlutterFrameInfo*>(frame));
+    };
+    config.vulkan.present_image_callback =
+        [](void* user_data, const FlutterVulkanImage* image) -> bool {
+      auto* engine = reinterpret_cast<FlutterTizenEngine*>(user_data);
+      if (!engine->view()) {
+        return false;
+      }
+
+      return engine->context()->PresentCallback(
+          reinterpret_cast<const FlutterVulkanImage*>(image));
+    };
+#endif
   } else {
     config.type = kSoftware;
     config.software.struct_size = sizeof(config.software);
